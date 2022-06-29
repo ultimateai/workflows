@@ -1,0 +1,53 @@
+name: "Open PR to main branch"
+
+on:
+  workflow_call:
+
+jobs:
+  test_build:
+    runs-on: self-hosted
+    name: Test code and build image 
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16.x'
+
+      - name: Export Home
+        run: echo "HOME=/root" >> $GITHUB_ENV
+
+      ##  Needs to be added so as to pull common Libs from bitbucket ##
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.BB_SSH_KEY }}
+          name: id_rsa
+          known_hosts: bitbucket.org
+          if_key_exists: ignore
+
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-
+
+      - name: Install npm Packages
+        run: npm install
+
+      - name: Test
+        run: npm run test
+
+      - name: Docker build
+        run: |-
+          echo "$SSH_KEY" > id_rsa
+          docker build .
+        shell: bash
+        env:
+          SSH_KEY: ${{secrets.BB_SSH_KEY}}

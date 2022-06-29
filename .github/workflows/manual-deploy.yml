@@ -1,0 +1,82 @@
+name: Manual deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      Deployment:
+        description: 'Choose in which environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - development
+          - production
+      Version:
+        description: 'In case you want to deploy an specific version - otherwise latest release will be deployed'
+        required: false
+        type: string
+
+
+env:
+  IMAGE_REPO: eu.gcr.io/ultimateai-169214
+  APP_SQUAD: backend
+
+jobs:
+  deploy:
+    name: Update k8s-manifest repo
+    runs-on: self-hosted
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - id: "image_name"
+        name: "Get repo name and update IMAGE_NAME"
+        run: |- 
+          IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
+          echo $IMAGE_NAME
+          echo '::set-output name=image_name::'$IMAGE_NAME
+
+      - id: fetch_latest_release
+        uses: gregziegan/fetch-latest-release@v2.0.0
+        with:
+          github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+
+      - id: tag_to_deploy
+        name: Calculate version to deploy
+        run: |-
+          if [[ -z "${INPUT_VERSION}"  ]]; then
+            TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
+          else
+            TAG=$INPUT_VERSION
+          fi
+          echo '::set-output name=tag::'$TAG
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.Version }}
+
+      ##Automatic deploy to development on merged PR to main
+      - name: "Checkout k8s manifests"
+        uses: actions/checkout@v3
+        with:
+          repository: ultimateai/k8s-manifests
+          token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+          
+      - name: Update the Image tags for Dev Environment for CronJob k6-loadtest
+        run: |-
+          cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
+          kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+          cat kustomization.yaml
+          git config --local user.email "86783263+ultimateai-bot@users.noreply.github.com"
+          git config --local user.name "ultimateai-bot"
+          git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
+          git push ${REMOTE_REPO} HEAD:main --force 
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/k8s-manifests.git
+          K8S_ENV_NAME: ${{ github.event.inputs.Deployment }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+      
