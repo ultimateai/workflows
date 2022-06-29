@@ -1,15 +1,23 @@
 name: Merged PR to main branch
 
 on:
-  pull_request:
-    branches:
-      - main
-    types:
-      - closed
+  workflow_call:
+    inputs:
+        image_repo:
+          required: true
+          type: string
+          description: "Your container registry repository - default is eu.gcr.io/ultimateai-169214"
+          default: eu.gcr.io/ultimateai-169214
+        app_squad:
+          required: true
+          type: string
+          description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
+        
+        
 
 env:
-  IMAGE_REPO: eu.gcr.io/ultimateai-169214
-  APP_SQUAD: backend
+  IMAGE_REPO: ${{ inputs.image_repo }}
+  APP_SQUAD: ${{ inputs.app_squad }}
 
 jobs:
   bump-release:
