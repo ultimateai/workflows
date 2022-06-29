@@ -1,26 +1,32 @@
 name: Manual deploy
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      Deployment:
-        description: 'Choose in which environment to deploy'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-          - staging
-          - development
-          - production
-      Version:
-        description: 'In case you want to deploy an specific version - otherwise latest release will be deployed'
-        required: false
-        type: string
+        image_repo:
+          required: true
+          type: string
+          description: "Your container registry repository - default is eu.gcr.io/ultimateai-169214"
+          default: eu.gcr.io/ultimateai-169214
+        app_squad:
+          required: true
+          type: string
+          description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
+        environment:
+          required: true
+          type: string
+          description: "In which environment do you want to deploy"
+        version:
+          required: false
+          type: string
+          description: "Which tag do you want to deploy - if none, latest release will be used"
 
 
 env:
-  IMAGE_REPO: eu.gcr.io/ultimateai-169214
-  APP_SQUAD: backend
+  IMAGE_REPO: ${{ inputs.image_repo }}
+  APP_SQUAD: ${{ inputs.app_squad }}
+  ENVIRONMENT: ${{ inputs.environment }}
+  VERSION: ${{ inputs.version }}
 
 jobs:
   deploy:
@@ -49,14 +55,12 @@ jobs:
       - id: tag_to_deploy
         name: Calculate version to deploy
         run: |-
-          if [[ -z "${INPUT_VERSION}"  ]]; then
+          if [[ -z "${VERSION}"  ]]; then
             TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
           else
-            TAG=$INPUT_VERSION
+            TAG=$VERSION
           fi
           echo '::set-output name=tag::'$TAG
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.Version }}
 
       ##Automatic deploy to development on merged PR to main
       - name: "Checkout k8s manifests"
@@ -67,7 +71,7 @@ jobs:
           
       - name: Update the Image tags for Dev Environment for CronJob k6-loadtest
         run: |-
-          cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
+          cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
           kustomize edit set image app=${IMAGE_NAME}:${TAGS}
           cat kustomization.yaml
           git config --local user.email "86783263+ultimateai-bot@users.noreply.github.com"
@@ -77,6 +81,5 @@ jobs:
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/k8s-manifests.git
-          K8S_ENV_NAME: ${{ github.event.inputs.Deployment }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
       
