@@ -41,6 +41,7 @@ env:
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
+  ALLOWED_USERS: ("robgutsopedra" "dbojarUltimate" "ultimake" "ywilkof")
 
 
 jobs:
@@ -54,6 +55,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+          
 
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"
@@ -73,7 +75,13 @@ jobs:
           if [[ -z "${VERSION}"  ]]; then
             TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
           else
-            TAG=$VERSION
+            if [[ " ${ALLOWED_USERS[*]} " =~ ${{ github.actor }} ]]; then
+              echo "This user - ${{ github.actor }} - is allowed"
+              TAG=$VERSION
+            else
+              echo "Sorry,${{ github.actor }}, you are not allowed to choose specific version to deploy - contact your platform team"
+              exit 1
+            fi
           fi
           echo '::set-output name=tag::'$TAG
 
