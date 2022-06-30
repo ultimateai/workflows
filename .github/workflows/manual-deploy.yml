@@ -41,7 +41,7 @@ env:
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
-  ALLOWED_USERS: ("robgutsopedra" "dbojarUltimate" "ultimake" "ywilkof")
+  ALLOWED_USERS: ("dbojarUltimate" "ultimake" "ywilkof")
 
 
 jobs:
