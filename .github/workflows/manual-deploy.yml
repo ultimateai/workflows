@@ -32,7 +32,7 @@ on:
           type: string
           description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
         allowed_users:
-          required: true
+          required: false
           type: string
           description: "Users allowed to deploy specific versions - format should be like user1,user2,user3"
 
