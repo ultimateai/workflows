@@ -79,6 +79,10 @@ jobs:
           if [[ -z "${VERSION}"  ]]; then
             TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
           else
+            if [[ -z "${ALLOWED_USERS}"  ]]; then
+              echo "You have selected a specific version to deploy, but provided no list of people who can deploy specific versions (allowed_users)"
+              exit 1
+            fi
             IFS=',' read -r -a array <<< "$ALLOWED_USERS"
             if [[ " ${array[*]} " =~ ${{ github.actor }} ]]; then
               echo "This user - ${{ github.actor }} - is allowed"
