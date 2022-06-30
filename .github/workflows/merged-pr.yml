@@ -137,7 +137,7 @@ jobs:
           git push ${REMOTE_REPO} HEAD:main --force 
         env:
           TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
-          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${K8S_MANIFESTS_REPO}.git
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           K8S_ENV_NAME: development
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
       

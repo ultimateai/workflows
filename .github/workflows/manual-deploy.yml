@@ -95,6 +95,6 @@ jobs:
           git push ${REMOTE_REPO} HEAD:main --force 
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${K8S_MANIFESTS_REPO}.git
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
       
