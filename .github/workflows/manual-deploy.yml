@@ -6,8 +6,7 @@ on:
         image_repo:
           required: true
           type: string
-          description: "Your container registry repository - default is eu.gcr.io/ultimateai-169214"
-          default: eu.gcr.io/ultimateai-169214
+          description: "Your container registry repository - like eu.gcr.io/ultimateai-169214"
         app_squad:
           required: true
           type: string
@@ -20,6 +19,18 @@ on:
           required: false
           type: string
           description: "Which tag do you want to deploy - if none, latest release will be used"
+        github_email:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this email"
+        github_user:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this user"
+        k8s_manifests_repo:
+          required: true
+          type: string
+          description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
 
 
 env:
@@ -27,6 +38,10 @@ env:
   APP_SQUAD: ${{ inputs.app_squad }}
   ENVIRONMENT: ${{ inputs.environment }}
   VERSION: ${{ inputs.version }}
+  GITHUB_EMAIL: ${{ inputs.github_email }}
+  GITHUB_USER: ${{ inputs.github_user }}
+  K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
+
 
 jobs:
   deploy:
@@ -66,7 +81,7 @@ jobs:
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
         with:
-          repository: ultimateai/k8s-manifests
+          repository: $K8S_MANIFESTS_REPO
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           
       - name: Update the Image tags for Dev Environment for CronJob k6-loadtest
@@ -74,12 +89,12 @@ jobs:
           cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
           kustomize edit set image app=${IMAGE_NAME}:${TAGS}
           cat kustomization.yaml
-          git config --local user.email "86783263+ultimateai-bot@users.noreply.github.com"
-          git config --local user.name "ultimateai-bot"
+          git config --local user.email $GITHUB_EMAIL
+          git config --local user.name $GITHUB_USER
           git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
           git push ${REMOTE_REPO} HEAD:main --force 
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/k8s-manifests.git
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${K8S_MANIFESTS_REPO}.git
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
       
