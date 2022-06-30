@@ -81,7 +81,7 @@ jobs:
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
         with:
-          repository: $K8S_MANIFESTS_REPO
+          repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           
       - name: Update the Image tags for Dev Environment for CronJob k6-loadtest

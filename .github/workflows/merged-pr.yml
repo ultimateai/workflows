@@ -107,7 +107,7 @@ jobs:
           docker build -t "${IMAGE_NAME}:${TAGS}" .
         shell: bash
         env:
-          SSH_KEY: ${{secrets.BB_SSH_KEY}}
+          SSH_KEY: ${{ secrets.BB_SSH_KEY }}
           TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
 
@@ -123,7 +123,7 @@ jobs:
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
         with:
-          repository: ${K8S_MANIFESTS_REPO}
+          repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           
       - name: Update the Image tags for Dev Environment for CronJob k6-loadtest
