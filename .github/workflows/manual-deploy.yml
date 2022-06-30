@@ -34,7 +34,7 @@ on:
         allowed_users:
           required: true
           type: string
-          description: "Users allowed to deploy specific versions - bash array format, like ("user1" "user2")"
+          description: "Users allowed to deploy specific versions - format should be like user1,user2,user3"
 
 
 env:
@@ -79,7 +79,8 @@ jobs:
           if [[ -z "${VERSION}"  ]]; then
             TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
           else
-            if [[ " ${ALLOWED_USERS[*]} " =~ ${{ github.actor }} ]]; then
+            IFS=',' read -r -a array <<< "$ALLOWED_USERS"
+            if [[ " ${array[*]} " =~ ${{ github.actor }} ]]; then
               echo "This user - ${{ github.actor }} - is allowed"
               TAG=$VERSION
             else
