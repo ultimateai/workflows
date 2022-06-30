@@ -31,6 +31,10 @@ on:
           required: true
           type: string
           description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+        allowed_users:
+          required: true
+          type: string
+          description: "Users allowed to deploy specific versions - bash array format, like ("user1" "user2")"
 
 
 env:
@@ -41,7 +45,7 @@ env:
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
-  ALLOWED_USERS: ("dbojarUltimate" "ultimake" "ywilkof")
+  ALLOWED_USERS: ${{ inputs.allowed_users }}
 
 
 jobs:
