@@ -95,11 +95,24 @@ jobs:
           echo '::set-output name=tag::'$TAG
 
       ##Automatic deploy to development on merged PR to main
+
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
         with:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+      
+      - name: Check if version is already deployed in stage, if trying to deploy in prod
+        run: |-
+          if [[ "${ENVIRONMENT}" = "production" ]]; then
+            STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+            if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
+              echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
+              exit 1
+            fi
+          fi
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           
       - name: Update the Image tags for Dev Environment for CronJob k6-loadtest
         run: |-
