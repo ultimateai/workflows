@@ -23,6 +23,10 @@ on:
           required: true
           type: string
           description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+        update_file:
+          required: false
+          type: string
+          description: "The file with the version you want to update"
         
         
 
@@ -32,6 +36,7 @@ env:
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
+  UPDATE_FILE: ${{ inputs.update_file }}
 
 jobs:
   bump-release:
@@ -44,10 +49,11 @@ jobs:
           fetch-depth: 0
 
       - name: Bump version and release
-        uses: amiiit/merge-bump-release@v0.3.10
+        uses: ultimateai/bump-action@main
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
+          update_file: ${{ env.UPDATE_FILE }}
 
   push-and-deploy:
     name: Push image with updated tag and update development environment
