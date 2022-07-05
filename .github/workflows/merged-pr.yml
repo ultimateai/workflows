@@ -49,7 +49,7 @@ jobs:
           fetch-depth: 0
 
       - name: Bump version and release
-        uses: ultimateai/bump-action@v0.4.0
+        uses: ultimateai/bump-action@main
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
