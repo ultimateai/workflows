@@ -27,6 +27,10 @@ on:
           required: false
           type: string
           description: "The file with the version you want to update"
+        changelog:
+          required: false
+          type: boolean
+          description: "Update changelog"
         
         
 
@@ -37,6 +41,7 @@ env:
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
   UPDATE_FILE: ${{ inputs.update_file }}
+  CHANGELOG: ${{ inputs.changelog }}
 
 jobs:
   bump-release:
@@ -54,6 +59,7 @@ jobs:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
           update_file: ${{ env.UPDATE_FILE }}
+          changelog: ${{ env.CHANGELOG }}
 
   push-and-deploy:
     name: Push image with updated tag and update development environment
