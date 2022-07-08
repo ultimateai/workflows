@@ -2,6 +2,40 @@ name: "Lint PR title"
 
 on:
   workflow_call:
+    inputs:
+      requireScope:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether scope of PR title is required - feat(SCOPE): subject"
+      subjectPattern:
+        required: false
+        type: string
+        default: ^(?![A-Z]).+$
+        description: "Regex for subject of PR title - feat(SCOPE): subject"
+      subjectPatternError:
+        required: false
+        type: string
+        default: 'The subject "{subject}" found in the pull request title "{title}" did not match the configured pattern. Please ensure that the subject does not start with an uppercase character'
+        description: "Error to show when subject does not match subject regex"
+      allowed_types:
+        required: false
+        type: string
+        default: |
+          fix
+          feat
+          breaking
+          minor
+          major
+          patch
+        description: "Types allowed in PR title - TYPE(scope): subject"
+  
+env:
+  REQUIRE_SCOPE: ${{ inputs.requireScope }}
+  SUBJECT_PATTERN: ${{ inputs.subjectPattern }}
+  SUBJECT_PATTERN_ERROR: ${{ inputs.subjectPatternError }}
+  ALLOWED_TYPES: ${{ inputs.allowed_types }}
+
 
 jobs:
   main:
@@ -13,17 +47,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           types: |
-            fix
-            feat
-            breaking
-            minor
-            major
-            patch
-          requireScope: false
-          subjectPattern: https:\/\/(www\.)?ultimateai\.atlassian\.net\/browse\/([-a-zA-Z0-9 /-]+)
+            ${{ env.ALLOWED_TYPES }}
+          requireScope: ${{ env.REQUIRE_SCOPE }}
+          subjectPattern: ${{ env.SUBJECT_PATTERN }}
           # If `subjectPattern` is configured, you can use this property to override
           # the default error message that is shown when the pattern doesn't match.
           # The variables `subject` and `title` can be used within the message.
-          subjectPatternError: |
-            The subject "{subject}" found in the pull request title "{title}"
-            didn't match the configured pattern. Please start with the jira issue which originated your work - like feat(scope): https://ultimateai.atlassian.net/browse/PLT-000
+          subjectPatternError: ${{ env.SUBJECT_PATTERN_ERROR }}
