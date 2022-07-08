@@ -42,13 +42,26 @@ Input needed:
     - allowed_users: comma-separated list of users allowed to deploy specific versions (user1,user2,user3) 🟣
     🟣 Version and allowed_users are optional - just mind that, if allowed_users is empty, no one will be able to deploy specific versions =)
 
+-   `lint-pr.yml`: This action will happen whenever you open, edit or sync a PR. input needed:   
+    - requireScope: Whether scope of PR title is required - feat(SCOPE): subject
+    - subjectPattern: Regex for subject of PR title - feat(SCOPE): subject
+    - subjectPatternError: Error to show when subject does not match subject regex
+    - allowed_types: Types allowed in PR title - TYPE(scope): subject  
+      🟣The purpose of this action is to verify the PR so that it looks like
+      ```
+      feat(ui): https://ultimateai.atlassian.net/browse/PLT-000 some explanation of the work you've done.
+      ^    ^    ^
+      |    |    |__ Subject
+      |    |_______ Scope
+      |____________ Type
+      ```
+  
+
 ## Important limitations
 1. Only chaper leads can deploy a version different from the latest one 🔴
 2. If you try to deploy a version in production which is NOT deployed in staging, workflow will fail 🔴
 
 
 ## TODO
-1. Adequate version bumping (with our own script/action)
-2. Python support
-3. Commit format validation - https://github.com/amannn/action-semantic-pull-request https://www.conventionalcommits.org/en/v1.0.0/
-4. Lint and verify k8s repo - https://github.com/devxp-tech/gitops/blob/main/.github/workflows/main.yaml
+1. Python support
+2. Lint and verify k8s repo - https://github.com/devxp-tech/gitops/blob/main/.github/workflows/main.yaml
