@@ -138,7 +138,7 @@ jobs:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           
-      - name: Update the Image tags for Dev Environment for CronJob k6-loadtest
+      - name: Update the Image tags for Dev Environment
         run: |-
           cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
           kustomize edit set image app=${IMAGE_NAME}:${TAGS}
