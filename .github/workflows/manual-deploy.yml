@@ -129,10 +129,10 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
 
       - name: Slack Notification
-        uses: rtCamp/action-slack-notify@v2
+        uses: slackapi/slack-github-action@v1.18.0
+        with:
+          channel-id: plt-239
+          slack-message: "random message blabla"
         env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_CHANNEL: plt-239
-          SLACK_USERNAME: actions_bot
-          SLACK_MESSAGE: Deploying something
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
       
