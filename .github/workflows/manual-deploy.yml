@@ -133,13 +133,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
+              "text": "GitHub Action build result: ${{ job.status }}",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+                    "text": "GitHub Action build result: ${{ job.status }}\Deployed ${IMAGE_NAME}:${TAGS} in $ENVIRONMENT by ${{ github.actor }}"
                   }
                 }
               ]
@@ -147,4 +147,6 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
       
