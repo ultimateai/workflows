@@ -150,10 +150,10 @@ jobs:
         run: |-
           echo ${SLACK_THREAD}
         env:
-          SLACK_THREAD: ${{ steps.slack_notif.outputs.thread_ts }}
+          SLACK_THREAD: ${{ steps.slack_notif.outputs.time }}
 
       - name: Slack Notification
-        uses: slackapi/slack-github-action@v1.18.0
+        uses: slackapi/slack-github-action@v1.19.0
         with:
           payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Another message which should be inside \"}}],\"thread_ts\": \"${{ env.SLACK_THREAD }}\"}"
         env:
