@@ -94,8 +94,6 @@ jobs:
           fi
           echo '::set-output name=tag::'$TAG
 
-      ##Automatic deploy to development on merged PR to main
-
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
         with:
@@ -111,6 +109,14 @@ jobs:
               exit 1
             fi
           fi
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+
+      - name: Check old deployed version in env to improve slack message
+        id: get_old_version
+        run: |-
+          OLD_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
+          echo '::set-output name=old_version::'$OLD_VERSION
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           
@@ -131,12 +137,13 @@ jobs:
       - name: Slack Notification
         uses: slackapi/slack-github-action@v1.18.0
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"plain_text\",\"text\":\"Manual deployment at ${{ env.ENVIRONMENT }} by ${{ github.actor }} of ${{ github.event.repository.name }}, version ${{ env.TAGS }} \",\"emoji\":true}}]}"
+          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"plain_text\",\"text\":\"Manual deployment at ${{ env.ENVIRONMENT }} by ${{ github.actor }} of ${{ github.event.repository.name }}, version ${{ env.OLD_VERSION }} --> ${{ env.TAGS }} \",\"emoji\":true}}]}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
 
 
                   
