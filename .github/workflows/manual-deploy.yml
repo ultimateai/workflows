@@ -136,7 +136,7 @@ jobs:
 
       - name: Slack Notification
         id: slack_notif
-        uses: slackapi/slack-github-action@v1.18.0
+        uses: slackapi/slack-github-action@v1.19.0
         with:
           payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \"}}]}"
         env:
@@ -145,6 +145,12 @@ jobs:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+
+      - name: Check thread_id
+        run: |-
+          echo $SLACK_THREAD
+        env:
+          SLACK_THREAD: ${{ steps.slack_notif.outputs.thread_ts }}
 
       - name: Slack Notification
         uses: slackapi/slack-github-action@v1.18.0
