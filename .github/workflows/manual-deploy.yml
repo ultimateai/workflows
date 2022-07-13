@@ -147,7 +147,6 @@ jobs:
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
 
       - name: Slack Notification
-        id: slack_notif
         uses: slackapi/slack-github-action@v1.18.0
         with:
           payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \"}}]}"
