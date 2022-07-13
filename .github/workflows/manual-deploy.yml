@@ -139,7 +139,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "GitHub Action build result: ${{ job.status }}\Deployed ${IMAGE_NAME}:${TAGS} in $ENVIRONMENT by ${{ github.actor }}"
+                    "text": "GitHub Action build result: ${{ job.status }}\Deployed ${{IMAGE_NAME}}:${{TAGS}} in ${{ENVIRONMENT}} by ${{ github.actor }}"
                   }
                 }
               ]
