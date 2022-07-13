@@ -150,7 +150,7 @@ jobs:
         run: |-
           echo ${SLACK_THREAD}
         env:
-          SLACK_THREAD: ${{ steps.slack_notif.outputs.time }}
+          SLACK_THREAD: ${{ steps.slack_notif.outputs.thread_ts }}
 
       - name: Slack Notification
         uses: slackapi/slack-github-action@v1.19.0
