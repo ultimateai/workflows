@@ -131,22 +131,14 @@ jobs:
       - name: Slack Notification
         uses: slackapi/slack-github-action@v1.18.0
         with:
-          payload: |
-            {
-              "text": "GitHub Action build result: ${{ job.status }}",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "GitHub Action build result: ${{ job.status }}\nDeployed ${{IMAGE_NAME}}:${{TAGS}} in ${{ENVIRONMENT}} by ${{ github.actor }}"
-                  }
-                }
-              ]
-            }
+          payload: "{\"author\":\"${{ github.actor }}\",\"url\":\"${{ env.ENVIRONMENT}}\", \"repoName\":\"${{ github.event.repository.full_name }}\", \"status\":\"${{ job.status }}\"}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+
+
+                  
+
       
