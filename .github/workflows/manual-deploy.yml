@@ -137,7 +137,7 @@ jobs:
       - name: Slack Notification
         uses: slackapi/slack-github-action@v1.18.0
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"plain_text\",\"text\":\"Manual deployment at ${{ env.ENVIRONMENT }} by ${{ github.actor }} of ``` ${{ github.event.repository.name }} ```, version ${{ env.OLD_VERSION }} --> ${{ env.TAGS }} \",\"emoji\":true}}]}"
+          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Manual deployment at ${{ env.ENVIRONMENT }} by ${{ github.actor }} of `${{ github.event.repository.name }}`, version `${{ env.OLD_VERSION }}` --> `${{ env.TAGS }}` \",\"emoji\":true}}]}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
