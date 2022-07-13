@@ -148,7 +148,7 @@ jobs:
 
       - name: Check thread_id
         run: |-
-          echo $SLACK_THREAD
+          echo ${SLACK_THREAD}
         env:
           SLACK_THREAD: ${{ steps.slack_notif.outputs.thread_ts }}
 
