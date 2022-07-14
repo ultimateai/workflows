@@ -136,33 +136,35 @@ jobs:
 
       - name: Slack Notification
         id: slack_notif
+        if: ${{ env.TAGS == env.LATEST_TAG }}
         uses: slackapi/slack-github-action@v1.19.0
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \"}}]}"
+          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}`\nCommit -> \"}}]}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-
-      - name: Check thread_id
-        run: |-
-          echo ${SLACK_THREAD}
-        env:
-          SLACK_THREAD: ${{ steps.slack_notif.outputs.thread_ts }}
+          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
 
       - name: Slack Notification
+        id: slack_notif
+        if: ${{ env.TAGS != env.LATEST_TAG }}
         uses: slackapi/slack-github-action@v1.19.0
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Another message which should be inside \"}}],\"thread_ts\": \"1657730285.000609\"}"
+          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}`\nThis is a rollback! -> \"}}]}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-          SLACK_THREAD: ${{ steps.slack_notif.outputs.thread_ts }}
+          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
+
+
 
 
                   
