@@ -150,7 +150,7 @@ jobs:
           RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
 
       - name: Slack Notification
-        id: slack_notif
+        id: slack_notif_rollback
         if: ${{ env.TAGS != env.LATEST_TAG }}
         uses: slackapi/slack-github-action@v1.19.0
         with:
