@@ -134,16 +134,35 @@ jobs:
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
 
-      - name: Slack Notification
-        uses: slackapi/slack-github-action@v1.18.0
+      - name: Slack Notification for deployment
+        id: slack_notif
+        if: ${{ env.TAGS == env.LATEST_TAG }}
+        uses: slackapi/slack-github-action@v1.19.0
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \"}}]}"
+          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Commit -> `${{ env.RELEASE_TITLE}}`\"}}]}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
+
+      - name: Slack Notification for rollback
+        id: slack_notif_rollback
+        if: ${{ env.TAGS != env.LATEST_TAG }}
+        uses: slackapi/slack-github-action@v1.19.0
+        with:
+          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n *WARNING!!* This is a rollback! Please add any information under this thread. \"}}]}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
 
 
                   
