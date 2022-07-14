@@ -139,7 +139,7 @@ jobs:
         if: ${{ env.TAGS == env.LATEST_TAG }}
         uses: slackapi/slack-github-action@v1.19.0
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}`\nCommit -> \"}}]}"
+          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` '\\n' Commit -> `${{ env.RELEASE_TITLE}}`\"}}]}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
