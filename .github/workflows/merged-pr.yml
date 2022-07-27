@@ -31,6 +31,10 @@ on:
           required: false
           type: boolean
           description: "Update changelog"
+        initial_release:
+          required: false
+          type: string
+          description: "In case no release is present in the repo, which one should be the first release - defaults to 0.0.1"
         
         
 
@@ -42,6 +46,7 @@ env:
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
   UPDATE_FILE: ${{ inputs.update_file }}
   CHANGELOG: ${{ inputs.changelog }}
+  INITIAL_RELEASE: ${{ inputs.initial_release }}
 
 jobs:
   bump-release:
@@ -60,6 +65,7 @@ jobs:
           infer_bump_from_commit: true
           update_file: ${{ env.UPDATE_FILE }}
           changelog: ${{ env.CHANGELOG }}
+          initial_release: ${{ env.INITIAL_RELEASE }}
 
   push-and-deploy:
     name: Push image with updated tag and update development environment
