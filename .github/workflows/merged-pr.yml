@@ -34,7 +34,7 @@ on:
         initial_release:
           required: false
           type: string
-          description: "In case no release is present in the repo, which one should be the first release - defaults to 0.0.0"
+          description: "In case no release is present in the repo, which one should be the base release from which to bump - defaults to 0.0.0"
           default: "0.0.0"
         
         
