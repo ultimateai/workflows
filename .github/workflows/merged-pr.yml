@@ -31,6 +31,11 @@ on:
           required: false
           type: boolean
           description: "Update changelog"
+        initial_release:
+          required: false
+          type: string
+          description: "In case no release is present in the repo, which one should be the base release from which to bump - defaults to 0.0.0"
+          default: "0.0.0"
         
         
 
@@ -42,6 +47,7 @@ env:
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
   UPDATE_FILE: ${{ inputs.update_file }}
   CHANGELOG: ${{ inputs.changelog }}
+  INITIAL_RELEASE: ${{ inputs.initial_release }}
 
 jobs:
   bump-release:
@@ -54,12 +60,13 @@ jobs:
           fetch-depth: 0
 
       - name: Bump version and release
-        uses: ultimateai/bump-action@v0.5.1
+        uses: ultimateai/bump-action@feat/no-initial-release
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
           update_file: ${{ env.UPDATE_FILE }}
           changelog: ${{ env.CHANGELOG }}
+          initial_release: ${{ env.INITIAL_RELEASE }}
 
   push-and-deploy:
     name: Push image with updated tag and update development environment
