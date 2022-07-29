@@ -97,7 +97,7 @@ jobs:
       - id: get_changelog_content
         name: Get last changelog lines for slack notif
         run: |-
-          CHANGELOG_LINES = $(head -4 CHANGELOG.md)
+          CHANGELOG_LINES=$(head -4 CHANGELOG.md)
           echo $CHANGELOG_LINES
           echo '::set-output name=changelog_lines::'$CHANGELOG_LINES
 
