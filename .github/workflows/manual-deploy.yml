@@ -146,7 +146,7 @@ jobs:
         if: ${{ env.TAGS == env.LATEST_TAG }}
         uses: slackapi/slack-github-action@v1.19.0
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Commit -> `${{ env.RELEASE_TITLE}}` \\n `${{ env.CHANGELOG_LINES}}`\"}}]}"
+          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`\"}}]}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
@@ -155,7 +155,7 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
           RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
-          CHANGELOG_LINES: ${{ steps.get_changelog_content.changelog_lines }}
+          CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
 
       - name: Slack Notification for rollback
         id: slack_notif_rollback
