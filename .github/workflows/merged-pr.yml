@@ -36,10 +36,6 @@ on:
           type: string
           description: "In case no release is present in the repo, which one should be the base release from which to bump - defaults to 0.0.0"
           default: "0.0.0"
-        merged_branch:
-          required: false
-          type: string
-          description: "source branch"
         
         
 
@@ -52,7 +48,6 @@ env:
   UPDATE_FILE: ${{ inputs.update_file }}
   CHANGELOG: ${{ inputs.changelog }}
   INITIAL_RELEASE: ${{ inputs.initial_release }}
-  MERGED_BRANCH: ${{ inputs.merged_branch }}
 
 jobs:
   bump-release:
@@ -63,14 +58,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      
-      - id: "branch_name"
-        name: "Branch name"
-        run: |-
-          LOWER_BRANCH=${{ github.head_ref}}
-          echo $LOWER_BRANCH
-          INPUT_BRANCH=${{ env.merged_branch }}
-          echo $INPUT_BRANCH
 
       - name: Bump version and release
         uses: ultimateai/bump-action@feat/git-diff
@@ -80,7 +67,7 @@ jobs:
           update_file: ${{ env.UPDATE_FILE }}
           changelog: ${{ env.CHANGELOG }}
           initial_release: ${{ env.INITIAL_RELEASE }}
-          merged_branch: ${{ env.merged_branch }}
+          merged_branch: ${{ github.head_ref}}
 
   push-and-deploy:
     name: Push image with updated tag and update development environment
