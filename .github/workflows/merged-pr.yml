@@ -60,14 +60,13 @@ jobs:
           fetch-depth: 0
 
       - name: Bump version and release
-        uses: ultimateai/bump-action@feat/git-diff
+        uses: ultimateai/bump-action@feat/git-diff-tags
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
           update_file: ${{ env.UPDATE_FILE }}
           changelog: ${{ env.CHANGELOG }}
           initial_release: ${{ env.INITIAL_RELEASE }}
-          merged_branch: ${{ github.head_ref}}
 
   push-and-deploy:
     name: Push image with updated tag and update development environment
