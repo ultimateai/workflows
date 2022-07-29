@@ -2,6 +2,16 @@ name: "Open PR to main branch"
 
 on:
   workflow_call:
+    inputs:
+      test_command:
+        required: false
+        type: string
+        description: "Command for running your tests, defaults to - npm run test"
+        default: "npm run test"
+
+env:
+  TEST_COMMAND: ${{ inputs.test_command }}
+
 
 jobs:
   test_build:
@@ -42,7 +52,8 @@ jobs:
         run: npm install
 
       - name: Test
-        run: npm run test
+        if: ${{ env.TEST_COMMAND }}
+        run: $TEST_COMMAND
 
       - name: Docker build
         run: |-
