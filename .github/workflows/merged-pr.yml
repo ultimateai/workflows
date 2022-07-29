@@ -63,6 +63,14 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      
+      - id: "branch_name"
+        name: "Branch name"
+        run: |-
+          LOWER_BRANCH=${{ github.head_ref}}
+          echo $LOWER_BRANCH
+          INPUT_BRANCH=${{ env.merged_branch }}
+          echo $INPUT_BRANCH
 
       - name: Bump version and release
         uses: ultimateai/bump-action@feat/git-diff
