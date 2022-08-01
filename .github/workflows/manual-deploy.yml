@@ -127,7 +127,7 @@ jobs:
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           
-      - name: Update the Image tags for Dev Environment for CronJob k6-loadtest
+      - name: Update the Image tags for Dev Environment
         run: |-
           cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
           kustomize edit set image app=${IMAGE_NAME}:${TAGS}
