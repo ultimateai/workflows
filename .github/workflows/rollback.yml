@@ -109,7 +109,7 @@ jobs:
       
       - name: Check if version is already deployed in stage, if trying to deploy in prod
         run: |-
-          if [[ "${ENVIRONMENT}" = "production" ]]; then
+          if [[ "${ENVIRONMENT}" == "production" ]]; then
             STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
             if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
               echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
