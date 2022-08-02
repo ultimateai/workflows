@@ -1,4 +1,4 @@
-name: Manual deploy
+name: Rollback
 
 on:
   workflow_call:
@@ -49,7 +49,7 @@ env:
 
 
 jobs:
-  deploy:
+  deploy_rollback:
     name: Update k8s-manifest repo
     runs-on: self-hosted
     permissions:
