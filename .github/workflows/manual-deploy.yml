@@ -33,11 +33,9 @@ env:
   IMAGE_REPO: ${{ inputs.image_repo }}
   APP_SQUAD: ${{ inputs.app_squad }}
   ENVIRONMENT: ${{ inputs.environment }}
-  VERSION: ${{ inputs.version }}
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
-  ALLOWED_USERS: ${{ inputs.allowed_users }}
 
 
 jobs:
