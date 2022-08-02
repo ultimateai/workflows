@@ -56,12 +56,20 @@ Input needed:
     - image_repo: container registry (like eu.gcr.io/ultimateai-169214)
     - app_squad: folder inside k8s-repo containing your kustomize code (backend, qa, ia...)
     - environment: In which environment do you want to deploy
-    - version: (Optional 🟣) Which tag do you want to deploy - if none, latest release will be used. Only allowed_users can deploy specific versions
     - github_email: automatic bot email for commiting 
     - github_user: automatic bot user for commiting 
     - k8s_manifests_repo: {organization}/{repo} containing your argoCD-linked repo like ultimateai/k8s-manifests
-    - allowed_users: (Optional 🟣) comma-separated list of users allowed to deploy specific versions (user1,user2,user3)
-    🟣 Version and allowed_users are optional - just mind that, if allowed_users is empty, no one will be able to deploy specific versions =)
+
+-   `rollback.yml`: This action will deploy a selected version to a selected environment. If version is not provided, it will deploy the latest release =)
+Input needed:
+    - image_repo: container registry (like eu.gcr.io/ultimateai-169214)
+    - app_squad: folder inside k8s-repo containing your kustomize code (backend, qa, ia...)
+    - environment: In which environment do you want to deploy
+    - version: Which tag do you want to rollback to
+    - github_email: automatic bot email for commiting 
+    - github_user: automatic bot user for commiting 
+    - k8s_manifests_repo: {organization}/{repo} containing your argoCD-linked repo like ultimateai/k8s-manifests
+    - allowed_users: comma-separated list of users allowed to deploy specific versions (user1,user2,user3)
 
 -   `lint-pr.yml`: This action will happen whenever you open, edit or sync a PR. 
 Input needed:   

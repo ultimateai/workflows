@@ -1,4 +1,4 @@
-name: Manual deploy
+name: Rollback
 
 on:
   workflow_call:
@@ -15,6 +15,10 @@ on:
           required: true
           type: string
           description: "In which environment do you want to deploy"
+        version:
+          required: true
+          type: string
+          description: "Which tag do you want to deploy - if none, latest release will be used"
         github_email:
           required: true
           type: string
@@ -27,19 +31,25 @@ on:
           required: true
           type: string
           description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+        allowed_users:
+          required: true
+          type: string
+          description: "Users allowed to deploy specific versions - format should be like user1,user2,user3"
 
 
 env:
   IMAGE_REPO: ${{ inputs.image_repo }}
   APP_SQUAD: ${{ inputs.app_squad }}
   ENVIRONMENT: ${{ inputs.environment }}
+  VERSION: ${{ inputs.version }}
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
+  ALLOWED_USERS: ${{ inputs.allowed_users }}
 
 
 jobs:
-  deploy:
+  deploy_rollback:
     name: Update k8s-manifest repo
     runs-on: self-hosted
     permissions:
@@ -50,7 +60,6 @@ jobs:
         with:
           fetch-depth: 0
           
-
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"
         run: |- 
@@ -66,7 +75,23 @@ jobs:
       - id: tag_to_deploy
         name: Calculate version to deploy
         run: |-
-          TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
+          if [[ -z "${VERSION}"  ]]; then
+            echo "Version is empty, in rollback workflow version is mandatory!"
+            exit 1
+          else
+            if [[ -z "${ALLOWED_USERS}"  ]]; then
+              echo "You have selected a specific version to deploy, but provided no list of people who can deploy specific versions (allowed_users)"
+              exit 1
+            fi
+            IFS=',' read -r -a array <<< "$ALLOWED_USERS"
+            if [[ " ${array[*]} " =~ ${{ github.actor }} ]]; then
+              echo "This user - ${{ github.actor }} - is allowed"
+              TAG=$VERSION
+            else
+              echo "Sorry,${{ github.actor }}, you are not allowed to choose specific version to deploy - contact your platform team"
+              exit 1
+            fi
+          fi
           echo '::set-output name=tag::'$TAG
 
       - id: get_changelog_content
@@ -116,12 +141,12 @@ jobs:
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
 
-      - name: Slack Notification for deployment
-        id: slack_notif
-        if: ${{ env.TAGS == env.LATEST_TAG }}
+      - name: Slack Notification for rollback
+        id: slack_notif_rollback
+        if: ${{ env.TAGS != env.LATEST_TAG }}
         uses: slackapi/slack-github-action@v1.19.0
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`\"}}]}"
+          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n *WARNING!!* This is a rollback! Please add any information under this thread. \"}}]}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
@@ -130,7 +155,7 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
           RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
-          CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
+
 
                   
 
