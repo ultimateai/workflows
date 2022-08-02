@@ -34,6 +34,7 @@ Input needed:
     - github_email: automatic bot email for commiting 
     - github_user: automatic bot user for commiting 
     - k8s_manifests_repo: {organization}/{repo} containing your argoCD-linked repo like ultimateai/k8s-manifests
+    - automatic_deployment_to: (Optional 🟣) To which env you want to automatically deploy
     - update_file: (Optional 🟣) which file, if any, you want to bump alongside the release - currently accepting package.json or version.txt
     - changelog: (Optional 🟣) whether you want to update changelog.md or not, looks like --> 
       ```
