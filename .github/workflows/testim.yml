@@ -1,0 +1,56 @@
+name: "Testim critical testing"
+
+on:
+  workflow_call:
+    # testim_project:
+    #   required: true
+    #   type: string
+    #   description: "Testim project - like 3g2SlllRYzsltqammngh"
+    # testim_grid:
+    #   required: true
+    #   type: string
+    #   description: "Testim grid - like Testim-Grid"
+    # additional_params:
+    #   required: false
+    #   type: string
+    #   description:
+  
+env:
+  # TESTIM_PROJECT: ${{ inputs.testim_project }}
+  # TESTIM_GRID: ${{ inputs.testim_grid }}
+  # ADDITIONAL_PARAMS: ${{ inputs.additional_params }}
+
+
+jobs:
+  check-pod-status:
+    runs-on: self-hosted
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v0"
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
+          service_account: "github-gke@development-main-wtf1.iam.gserviceaccount.com"
+
+      - id: 'get-credentials'
+        uses: 'google-github-actions/get-gke-credentials@v0'
+        with:
+          cluster_name: 'ultimateai-development-main-1'
+          location: 'europe-west1'
+
+      - id: 'get-namespaces'
+        run: 'kubectl get namespaces'
+
+  # run-testimio-cli:
+  #   runs-on: self-hosted
+  #   steps:
+  #       - uses: actions/checkout@v2
+  #       - uses: actions/setup-node@v2
+  #         with:
+  #           node-version: '16.13.0'
+  #       - run: |-
+  #           npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project "4j2SxviWIdxspepqscef" --grid "Testim-Grid" --suite "Critical" --turbo-mode
