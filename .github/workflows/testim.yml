@@ -38,7 +38,7 @@ jobs:
         with:
           token_format: "access_token"
           workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
-          service_account: "github-gke@development-main-wtf1.iam.gserviceaccount.com"
+          service_account: ${{ secrets.GSA_GCR_EMAIL }}
 
       # - id: 'get-credentials'
       #   uses: 'google-github-actions/get-gke-credentials@v0'
