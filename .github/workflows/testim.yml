@@ -15,7 +15,7 @@ on:
     #   type: string
     #   description:
   
-env:
+# env:
   # TESTIM_PROJECT: ${{ inputs.testim_project }}
   # TESTIM_GRID: ${{ inputs.testim_grid }}
   # ADDITIONAL_PARAMS: ${{ inputs.additional_params }}
