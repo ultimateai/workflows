@@ -40,14 +40,14 @@ jobs:
           workload_identity_provider: "projects/863973150784/locations/global/workloadIdentityPools/github-gke-pool-1/providers/github-provider-1"
           service_account: "github-gke@development-main-wtf1.iam.gserviceaccount.com"
 
-      # - id: 'get-credentials'
-      #   uses: 'google-github-actions/get-gke-credentials@v0'
-      #   with:
-      #     cluster_name: 'ultimateai-development-main-1'
-      #     location: 'europe-west1'
+      - id: 'get-credentials'
+        uses: 'google-github-actions/get-gke-credentials@v0'
+        with:
+          cluster_name: 'ultimateai-development-main-1'
+          location: 'europe-west1'
 
-      # - id: 'get-namespaces'
-      #   run: 'kubectl get namespaces'
+      - id: 'get-namespaces'
+        run: 'kubectl get namespaces'
 
   # run-testimio-cli:
   #   runs-on: self-hosted
