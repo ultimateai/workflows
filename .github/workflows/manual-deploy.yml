@@ -102,19 +102,19 @@ jobs:
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           
-      - name: Update the Image tags for Selected Environment
-        run: |-
-          cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
-          kustomize edit set image app=${IMAGE_NAME}:${TAGS}
-          cat kustomization.yaml
-          git config --local user.email $GITHUB_EMAIL
-          git config --local user.name $GITHUB_USER
-          git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
-          git push ${REMOTE_REPO} HEAD:main --force 
-        env:
-          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+      # - name: Update the Image tags for Selected Environment
+      #   run: |-
+      #     cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
+      #     kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+      #     cat kustomization.yaml
+      #     git config --local user.email $GITHUB_EMAIL
+      #     git config --local user.name $GITHUB_USER
+      #     git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
+      #     git push ${REMOTE_REPO} HEAD:main --force 
+      #   env:
+      #     TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+      #     REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+      #     IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
 
       - name: Slack Notification for deployment
         id: slack_notif
