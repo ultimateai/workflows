@@ -134,7 +134,7 @@ jobs:
       
       - name: Gather relevant data for testim
         id: gather_data
-        if: ${{ env.ENVIRONMENT == "staging" && "1"=="1" }} 
+        if: ${{ env.ENVIRONMENT == "staging"}} 
         run: |-
           NAMESPACE=$(cat kustomization.yaml | yq .namespace)
           DEPLOYMENT_NAME=$(echo $(cat kustomization.yaml | yq .namePrefix)deployment)
@@ -143,7 +143,7 @@ jobs:
 
       - name: Invoke testim suite
         id: testim
-        if: ${{ env.ENVIRONMENT == "staging" && "1"=="1" }} 
+        if: ${{ env.ENVIRONMENT == "staging"}} 
         uses: ./.github/workflows/testim.yml
         with:
           namespace: ${{ steps.gather_data.outputs.namespace }}
