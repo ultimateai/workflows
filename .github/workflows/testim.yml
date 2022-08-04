@@ -2,6 +2,14 @@ name: "Testim critical testing"
 
 on:
   workflow_call:
+    namespace:
+      required: true
+      type: string
+      description: "K8s namespace - like backend, qa..."
+    deployment_name:
+      required: true
+      type: string
+      description: "K8s deployment name - like poc-typescript-app-stage-deployment"
     # testim_project:
     #   required: true
     #   type: string
@@ -15,7 +23,9 @@ on:
     #   type: string
     #   description:
   
-# env:
+env:
+  NAMESPACE: ${{ inputs.namespace }}
+  DEPLOYMENT_NAME: ${{ inputs.deployment_name }}
   # TESTIM_PROJECT: ${{ inputs.testim_project }}
   # TESTIM_GRID: ${{ inputs.testim_grid }}
   # ADDITIONAL_PARAMS: ${{ inputs.additional_params }}
@@ -50,7 +60,7 @@ jobs:
         id: install
       
       - run: |-
-          kubectl get namespaces
+          kubectl get deployment {{ env.DEPLOYMENT_NAME}} -n {{ env.NAMESPACE}} -o jsonpath="{.status.conditions[0].status}"
 
   # run-testimio-cli:
   #   runs-on: self-hosted
