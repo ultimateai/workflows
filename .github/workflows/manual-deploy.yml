@@ -145,9 +145,9 @@ jobs:
         id: testim
         if: ${{ env.ENVIRONMENT == "staging" && "1"=="1" }} 
         uses: ./.github/workflows/testim.yml
-          with:
-            namespace: ${{ steps.gather_data.outputs.namespace }}
-            deployment_name: ${{ steps.gather_data.outputs.deployment_name }}
+        with:
+          namespace: ${{ steps.gather_data.outputs.namespace }}
+          deployment_name: ${{ steps.gather_data.outputs.deployment_name }}
             
 
                   
