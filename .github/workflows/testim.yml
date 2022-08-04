@@ -46,8 +46,9 @@ jobs:
           cluster_name: 'ultimateai-development-main-1'
           location: 'europe-west1'
 
-      - id: 'get-namespaces'
-        run: 'kubectl get namespaces'
+      - uses: actions-hub/kubectl@master
+        with:
+          args: get namespaces
 
   # run-testimio-cli:
   #   runs-on: self-hosted
