@@ -132,7 +132,7 @@ jobs:
           RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
           CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
       
-      - name: Gather relevant data for testim
+      - name: Gather relevant data for e2e testim tests
         id: gather_data
         if: ${{ (env.ENVIRONMENT == 'staging') && (1==1) }} 
         run: |-
@@ -140,10 +140,56 @@ jobs:
           DEPLOYMENT_NAME=$(echo $(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .namePrefix)deployment)
           echo '::set-output name=namespace::'$NAMESPACE
           echo '::set-output name=deployment_name::'$DEPLOYMENT_NAME
-      
+
+  run-e2e-test:
+    needs: deploy
+    if: ${{ (env.ENVIRONMENT == 'staging') && (1==1) }}
+    name: Update k8s-manifest repo
+    runs-on: self-hosted
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v0"
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "projects/882245702486/locations/global/workloadIdentityPools/github-gke-pool-1/providers/github-provider-1"
+          service_account: "github-gke@staging-main-rlc4.iam.gserviceaccount.com"
+
+      - id: 'get-credentials'
+        uses: 'google-github-actions/get-gke-credentials@v0'
+        with:
+          cluster_name: 'ultimateai-staging-main-1'
+          location: 'europe-west1'
+
+      - uses: azure/setup-kubectl@v3
+        id: install
+      
+      - id: "check_status"
+        name: "Check deployment status in cluster"
+        run: |-
+          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment {{ env.DEPLOYMENT_NAME}} -n {{ env.NAMESPACE}} -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME < {{ env.MAX_KUBECTL_RETRIES}} ]];do sleep $(( NEXT_WAIT_TIME++ ));done;
+          FINAL_STATUS=$(kubectl get deployment {{ env.DEPLOYMENT_NAME}} -n {{ env.NAMESPACE}} -o jsonpath="{.status.conditions[0].status}")
+          echo "Status of deployment is $FINAL_STATUS"
+          echo '::set-output name=final_status::'$FINAL_STATUS
+        env:
+          NAMESPACE: ${{needs.deploy.outputs.namespace}}
+          DEPLOYMENT_NAME: ${{needs.deploy.outputs.deployment_name}}
+      
+      id: run_testim
+      name: Run testim e2e test if deployment is true
+      if: ${{ env.FINAL_STATUS == "True"}}
+      run: |-
+        echo "Its trueeeeeee"
+      env:
+        FINAL_STATUS: ${{ steps.check_status.outputs.final_status }}
+      
 
       - name: Invoke testim suite
         id: testim
