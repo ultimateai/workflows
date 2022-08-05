@@ -43,8 +43,8 @@ jobs:
     name: Update k8s-manifest repo
     runs-on: self-hosted
     outputs: 
-      namespace: ${{ steps.gather_data.namespace }}
-      deployment_name: ${{ steps.gather_data.deployment_name }}
+      namespace: ${{ steps.gather_data.outputs.namespace }}
+      deployment_name: ${{ steps.gather_data.outputs.deployment_name }}
       environment: ${{ env.ENVIRONMENT }}
     permissions:
       contents: "read"
