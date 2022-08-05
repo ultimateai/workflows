@@ -192,15 +192,6 @@ jobs:
           echo "Its trueeeeeee"
         env:
           FINAL_STATUS: ${{ steps.check_status.outputs.final_status }}
-      
-
-      - name: Invoke testim suite
-        id: testim
-        if: ${{ (env.ENVIRONMENT == 'staging') && (1==1) }} 
-        uses: ./.github/workflows/testim.yml
-        with:
-          namespace: ${{ steps.gather_data.outputs.namespace }}
-          deployment_name: ${{ steps.gather_data.outputs.deployment_name }}
             
 
                   
