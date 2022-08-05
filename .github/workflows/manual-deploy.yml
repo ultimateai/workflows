@@ -136,8 +136,8 @@ jobs:
         id: gather_data
         if: ${{ (env.ENVIRONMENT == 'staging') && (1==1) }} 
         run: |-
-          NAMESPACE=$(cat kustomization.yaml | yq .namespace)
-          DEPLOYMENT_NAME=$(echo $(cat kustomization.yaml | yq .namePrefix)deployment)
+          NAMESPACE=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .namespace)
+          DEPLOYMENT_NAME=$(echo $(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .namePrefix)deployment)
           echo '::set-output name=namespace::'$NAMESPACE
           echo '::set-output name=deployment_name::'$DEPLOYMENT_NAME
       
