@@ -140,6 +140,10 @@ jobs:
           DEPLOYMENT_NAME=$(echo $(cat kustomization.yaml | yq .namePrefix)deployment)
           echo '::set-output name=namespace::'$NAMESPACE
           echo '::set-output name=deployment_name::'$DEPLOYMENT_NAME
+      
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Invoke testim suite
         id: testim
