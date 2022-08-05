@@ -143,7 +143,7 @@ jobs:
 
   run-e2e-test:
     needs: deploy
-    if: ${{ needs.deploy.staging == 'true' }}
+    # if: ${{ needs.deploy.staging == 'true' }}
     name: run end to end tests
     runs-on: self-hosted
     permissions:
