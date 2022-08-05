@@ -177,13 +177,9 @@ jobs:
       - id: "check_status"
         name: "Check deployment status in cluster"
         run: |-
+          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME < 7 ]];do sleep $(( NEXT_WAIT_TIME++ ));done;
           FINAL_STATUS=$(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")
           echo "Status of deployment is $FINAL_STATUS"
-          FINAL_STATUS2=$(kubectl get deployment ${DEPLOYMENT_NAME} -n ${NAMESPACE} -o jsonpath="{.status.conditions[0].status}")
-          echo "Status of deployment is $FINAL_STATUS2"
-          FINAL_STATUS3=$(kubectl get deployment ${DEPLOYMENT_NAME} -n ${NAMESPACE} -o jsonpath="{.status.conditions[0].status}")
-          echo "Status of deployment is $FINAL_STATUS3"
-          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment ${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME < {{ env.MAX_KUBECTL_RETRIES}} ]];do sleep $(( NEXT_WAIT_TIME++ ));done;
           echo '::set-output name=final_status::'$FINAL_STATUS
         env:
           NAMESPACE: ${{needs.deploy.outputs.namespace}}
