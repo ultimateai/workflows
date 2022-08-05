@@ -10,6 +10,11 @@ on:
       required: true
       type: string
       description: "K8s deployment name - like poc-typescript-app-stage-deployment"
+    max_kubectl_retries:
+      required: false
+      type: number
+      default: 8
+      description: "while [[ status_is_false ]] && [[ NEXT_WAIT_TIME < *max_kubectl_retries* ]];do sleep NEXT_WAIT_TIME++"
     # testim_project:
     #   required: true
     #   type: string
@@ -26,13 +31,14 @@ on:
 env:
   NAMESPACE: ${{ inputs.namespace }}
   DEPLOYMENT_NAME: ${{ inputs.deployment_name }}
+  MAX_KUBECTL_RETRIES: ${{ inputs.max_kubectl_retries }}
   # TESTIM_PROJECT: ${{ inputs.testim_project }}
   # TESTIM_GRID: ${{ inputs.testim_grid }}
   # ADDITIONAL_PARAMS: ${{ inputs.additional_params }}
 
 
 jobs:
-  check-pod-status:
+  check-deployment-run-testim:
     runs-on: self-hosted
     permissions:
       contents: "read"
@@ -47,20 +53,36 @@ jobs:
         uses: "google-github-actions/auth@v0"
         with:
           token_format: "access_token"
-          workload_identity_provider: "projects/863973150784/locations/global/workloadIdentityPools/github-gke-pool-1/providers/github-provider-1"
-          service_account: "github-gke@development-main-wtf1.iam.gserviceaccount.com"
+          workload_identity_provider: "projects/882245702486/locations/global/workloadIdentityPools/github-gke-pool-1/providers/github-provider-1"
+          service_account: "github-gke@staging-main-rlc4.iam.gserviceaccount.com"
 
       - id: 'get-credentials'
         uses: 'google-github-actions/get-gke-credentials@v0'
         with:
-          cluster_name: 'ultimateai-development-main-1'
+          cluster_name: 'ultimateai-staging-main-1'
           location: 'europe-west1'
 
       - uses: azure/setup-kubectl@v3
         id: install
       
-      - run: |-
-          kubectl get deployment {{ env.DEPLOYMENT_NAME}} -n {{ env.NAMESPACE}} -o jsonpath="{.status.conditions[0].status}"
+      - id: "check_status"
+        name: "Check deployment status in cluster"
+        run: |-
+          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment {{ env.DEPLOYMENT_NAME}} -n {{ env.NAMESPACE}} -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME < {{ env.MAX_KUBECTL_RETRIES}} ]];do sleep $(( NEXT_WAIT_TIME++ ));done;
+          FINAL_STATUS=$(kubectl get deployment {{ env.DEPLOYMENT_NAME}} -n {{ env.NAMESPACE}} -o jsonpath="{.status.conditions[0].status}")
+          echo "Status of deployment is $FINAL_STATUS"
+          echo '::set-output name=final_status::'$FINAL_STATUS
+      
+      id: run_testim
+      name: Run testim e2e test if deployment is true
+      if: ${{ env.FINAL_STATUS == "True"}}
+      run: |-
+        echo "Its trueeeeeee"
+      env:
+        FINAL_STATUS: ${{ steps.check_status.outputs.final_status }}
+
+      
+          
 
   # run-testimio-cli:
   #   runs-on: self-hosted
