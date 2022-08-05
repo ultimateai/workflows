@@ -50,7 +50,6 @@ jobs:
         with:
           fetch-depth: 0
           
-
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"
         run: |- 
@@ -144,7 +143,7 @@ jobs:
   run-e2e-test:
     needs: deploy
     if: ${{ (env.ENVIRONMENT == 'staging') && (1==1) }}
-    name: Update k8s-manifest repo
+    name: run end to end tests
     runs-on: self-hosted
     permissions:
       contents: "read"
@@ -182,13 +181,13 @@ jobs:
           NAMESPACE: ${{needs.deploy.outputs.namespace}}
           DEPLOYMENT_NAME: ${{needs.deploy.outputs.deployment_name}}
       
-      id: run_testim
-      name: Run testim e2e test if deployment is true
-      if: ${{ env.FINAL_STATUS == "True"}}
-      run: |-
-        echo "Its trueeeeeee"
-      env:
-        FINAL_STATUS: ${{ steps.check_status.outputs.final_status }}
+      - id: run_testim
+        name: Run testim e2e test if deployment is true
+        if: ${{ env.FINAL_STATUS == "True"}}
+        run: |-
+          echo "Its trueeeeeee"
+        env:
+          FINAL_STATUS: ${{ steps.check_status.outputs.final_status }}
       
 
       - name: Invoke testim suite
