@@ -42,6 +42,10 @@ jobs:
   deploy:
     name: Update k8s-manifest repo
     runs-on: self-hosted
+    outputs: 
+      namespace: ${{ steps.gather_data.namespace }}
+      deployment_name: ${{ steps.gather_data.deployment_name }}
+      environment: ${{ env.ENVIRONMENT }}
     permissions:
       contents: "read"
       id-token: "write"
@@ -139,11 +143,10 @@ jobs:
           DEPLOYMENT_NAME=$(echo $(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .namePrefix)deployment)
           echo '::set-output name=namespace::'$NAMESPACE
           echo '::set-output name=deployment_name::'$DEPLOYMENT_NAME
-          echo '::set-output name=staging::'true
 
   run-e2e-test:
     needs: deploy
-    # if: ${{ needs.deploy.staging == 'true' }}
+    if: ${{ needs.deploy.outputs.environment == 'staging' }}
     name: run end to end tests
     runs-on: self-hosted
     permissions:
