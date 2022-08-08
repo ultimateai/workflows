@@ -27,11 +27,33 @@ on:
           required: true
           type: string
           description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+        run_e2e_tests:
+          required: false
+          type: boolean
+          description: "Wether to execute or not e2e tests - if yes, staging cluster name, testim_project, testim_grid and testim_suite must be provided"
+          default: false
         staging_cluster_name:
           required: false
           type: string
           description: "Cluster name of stage environment, where e2e test will be run"
-          default: "ultimateai-staging-main-1"
+        staging_cluster_location:
+          required: false
+          type: string
+          description: "Location of cluster in stage environment"
+        testim_project:
+          required: false
+          type: string
+          description: "Testim project ID"
+        testim_grid:
+          required: false
+          type: string
+          description: "Testim grid"
+        testim_suite:
+          required: false
+          type: string
+          description: "Testim suite"
+        
+        
 
 
 env:
@@ -42,6 +64,10 @@ env:
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
   STAGING_CLUSTER_NAME: ${{ inputs.staging_cluster_name }}
+  STAGING_CLUSTER_LOCATION: ${{ inputs.staging_cluster_location }}
+  TESTIM_PROJECT: ${{ inputs.testim_project }}
+  TESTIM_GRID: ${{ inputs.testim_grid }}
+  TESTIM_SUITE: ${{ inputs.testim_suite }}
 
 
 jobs:
@@ -51,7 +77,6 @@ jobs:
     outputs: 
       namespace: ${{ steps.gather_data.outputs.namespace }}
       deployment_name: ${{ steps.gather_data.outputs.deployment_name }}
-      environment: ${{ env.ENVIRONMENT }}
     permissions:
       contents: "read"
       id-token: "write"
@@ -179,7 +204,7 @@ jobs:
         uses: 'google-github-actions/get-gke-credentials@v0'
         with:
           cluster_name: ${{ env.STAGING_CLUSTER_NAME }}
-          location: 'europe-west1'
+          location: ${{ env.STAGING_CLUSTER_LOCATION }}
 
       - uses: azure/setup-kubectl@v3
         id: install
@@ -198,14 +223,23 @@ jobs:
       - id: run_testim
         name: Run testim e2e test if deployment is true
         # if: ${{ env.FINAL_STATUS == 'True'}}
+        continue-on-error: true
         run: |-
           echo "Its trueeeeeee"
-          npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project "4j2SxviWIdxspepqscef" --grid "Testim-Grid" --suite "Critical" --turbo-mode
+          echo $TESTIM_PROJECT
+          npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project $TESTIM_PROJECT --grid $TESTIM_GRID --suite $TESTIM_SUITE --turbo-mode
         env:
           FINAL_STATUS: ${{ steps.check_status.outputs.final_status }}
 
-      #       - run: |-
-      #           npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project "4j2SxviWIdxspepqscef" --grid "Testim-Grid" --suite "Critical" --turbo-mode
+      - name: Slack Notification for testim
+        id: slack_testim_notif
+        if: steps.run_testim.outcome == 'failure'
+        uses: slackapi/slack-github-action@v1.19.0
+        with:
+          payload: "{\"text\":\"Testim result\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/`${{ env.TESTIM_PROJECT }}`/branch/master/runs/suites\"}}]}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
             
 
                   
