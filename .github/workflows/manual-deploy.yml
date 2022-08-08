@@ -251,7 +251,7 @@ jobs:
       
       - name: Slack Notification for testim success
         id: slack_testim_notif_success
-        if: steps.run_testim.outcome =! 'failure'
+        if: steps.run_testim.outcome == 'success'
         uses: slackapi/slack-github-action@v1.19.0
         with:
           payload: "{\"text\":\"Testim result\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Testim succeded! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites for more details\"}}]}"
