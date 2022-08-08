@@ -29,9 +29,9 @@ on:
           description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
         run_e2e_tests:
           required: false
-          type: boolean
+          type: string
           description: "Wether to execute or not e2e tests - if yes, staging cluster name, testim_project, testim_grid and testim_suite must be provided"
-          default: false
+          default: "false"
         staging_cluster_name:
           required: false
           type: string
@@ -63,6 +63,7 @@ env:
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
+  RUN_E2E_TESTS: ${{ inputs.run_e2e_tests }}
   STAGING_CLUSTER_NAME: ${{ inputs.staging_cluster_name }}
   STAGING_CLUSTER_LOCATION: ${{ inputs.staging_cluster_location }}
   TESTIM_PROJECT: ${{ inputs.testim_project }}
@@ -77,6 +78,8 @@ jobs:
     outputs: 
       namespace: ${{ steps.gather_data.outputs.namespace }}
       deployment_name: ${{ steps.gather_data.outputs.deployment_name }}
+      environment: ${{ env.ENVIRONMENT}}
+      run_e2e_tests: ${{ env.RUN_E2E_TESTS}}
     permissions:
       contents: "read"
       id-token: "write"
@@ -177,7 +180,7 @@ jobs:
 
   run-e2e-test:
     needs: deploy
-    if: ${{ needs.deploy.outputs.environment == 'staging' }}
+    if: ${{ needs.deploy.outputs.environment == 'staging' && needs.deploy.outputs.run_e2e_tests == 'true' }}
     name: run end to end tests
     runs-on: self-hosted
     permissions:
