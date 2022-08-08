@@ -31,7 +31,7 @@ on:
           required: false
           type: string
           description: "Cluster name of stage environment, where e2e test will be run"
-          default:
+          default: "ultimateai-staging-main-1"
 
 
 env:
