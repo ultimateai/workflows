@@ -228,21 +228,38 @@ jobs:
         # if: ${{ env.FINAL_STATUS == 'True'}}
         continue-on-error: true
         run: |-
-          echo "Its trueeeeeee"
-          echo $TESTIM_PROJECT
           npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project $TESTIM_PROJECT --grid $TESTIM_GRID --suite $TESTIM_SUITE --turbo-mode
         env:
           FINAL_STATUS: ${{ steps.check_status.outputs.final_status }}
 
-      - name: Slack Notification for testim
+      - name: Slack Notification for testim failure
         id: slack_testim_notif
         if: steps.run_testim.outcome == 'failure'
         uses: slackapi/slack-github-action@v1.19.0
         with:
-          payload: "{\"text\":\"Testim result\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/`${{ env.TESTIM_PROJECT }}`/branch/master/runs/suites\"}}]}"
+          payload: "{\"text\":\"Testim result\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites\"}}]}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Fail workflow if testim fails
+        id: fail_wf_testim
+        if: steps.run_testim.outcome == 'failure'
+        run: |-
+          echo "Testim failed! Please check ${{ env.TESTIM_SUITE }} suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites"
+          exit 1
+      
+      - name: Slack Notification for testim success
+        id: slack_testim_notif_success
+        if: steps.run_testim.outcome =! 'failure'
+        uses: slackapi/slack-github-action@v1.19.0
+        with:
+          payload: "{\"text\":\"Testim result\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Testim succeded! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites for more details\"}}]}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      
+
             
 
                   
