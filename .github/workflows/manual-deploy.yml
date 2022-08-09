@@ -52,6 +52,10 @@ on:
           required: false
           type: string
           description: "Testim suite"
+        testim_additional_flags:
+          required: false 
+          type: string
+          description: "Additional flags for testim cli (--turbo-mode --parallel 2)"
         
         
 
@@ -69,6 +73,7 @@ env:
   TESTIM_PROJECT: ${{ inputs.testim_project }}
   TESTIM_GRID: ${{ inputs.testim_grid }}
   TESTIM_SUITE: ${{ inputs.testim_suite }}
+  TESTIM_ADDITIONAL_FLAGS: ${{ inputs.testim_additional_flags }}
 
 
 jobs:
@@ -228,7 +233,7 @@ jobs:
         # if: ${{ env.FINAL_STATUS == 'True'}}
         continue-on-error: true
         run: |-
-          npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project $TESTIM_PROJECT --grid $TESTIM_GRID --suite $TESTIM_SUITE --turbo-mode
+          npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project $TESTIM_PROJECT --grid $TESTIM_GRID --suite $TESTIM_SUITE $TESTIM_ADDITIONAL_FLAGS
         env:
           FINAL_STATUS: ${{ steps.check_status.outputs.final_status }}
 
@@ -258,10 +263,3 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-      
-
-            
-
-                  
-
-      
