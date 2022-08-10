@@ -227,7 +227,7 @@ jobs:
         name: "Check deployment status in cluster"
         run: |-
           echo $MAX_STATUS_TRIES
-          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME < 10 ]];do echo $NEXT_WAIT_TIME;sleep $(( NEXT_WAIT_TIME++ ));done;
+          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME < 8 ]];do echo $NEXT_WAIT_TIME;sleep $(( NEXT_WAIT_TIME++ ));done;
           FINAL_STATUS=$(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")
           echo "Status of deployment is $FINAL_STATUS"
           echo '::set-output name=final_status::'$FINAL_STATUS
