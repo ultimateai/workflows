@@ -59,7 +59,7 @@ on:
         max_status_tries:
           required: false 
           type: number
-          description: "Marks wait time for step checking deployment status - like NEXT_WAIT_TIME=0;while [[ DEPLOYMENT_STATUS=="False" ]] && [[ $NEXT_WAIT_TIME < $MAX_WAIT_TRIES ]];do sleep $(( NEXT_WAIT_TIME++ ));done;"
+          description: "Marks increasing wait time for step checking deployment status"
           default: 7
         
         
