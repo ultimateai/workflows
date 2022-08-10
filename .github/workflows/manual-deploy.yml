@@ -56,6 +56,11 @@ on:
           required: false 
           type: string
           description: "Additional flags for testim cli (--turbo-mode --parallel 2)"
+        max_status_tries:
+          required: false 
+          type: number
+          description: "Marks wait time for step checking deployment status - like NEXT_WAIT_TIME=0;while [[ DEPLOYMENT_STATUS=="False" ]] && [[ $NEXT_WAIT_TIME < $MAX_WAIT_TRIES ]];do sleep $(( NEXT_WAIT_TIME++ ));done;"
+          default: 7
         
         
 
@@ -74,6 +79,7 @@ env:
   TESTIM_GRID: ${{ inputs.testim_grid }}
   TESTIM_SUITE: ${{ inputs.testim_suite }}
   TESTIM_ADDITIONAL_FLAGS: ${{ inputs.testim_additional_flags }}
+  MAX_STATUS_TRIES: ${{ inputs.max_status_tries }}
 
 
 jobs:
@@ -144,19 +150,19 @@ jobs:
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           
-      - name: Update the Image tags for Selected Environment
-        run: |-
-          cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
-          kustomize edit set image app=${IMAGE_NAME}:${TAGS}
-          cat kustomization.yaml
-          git config --local user.email $GITHUB_EMAIL
-          git config --local user.name $GITHUB_USER
-          git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
-          git push ${REMOTE_REPO} HEAD:main --force 
-        env:
-          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+      # - name: Update the Image tags for Selected Environment
+      #   run: |-
+      #     cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
+      #     kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+      #     cat kustomization.yaml
+      #     git config --local user.email $GITHUB_EMAIL
+      #     git config --local user.name $GITHUB_USER
+      #     git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
+      #     git push ${REMOTE_REPO} HEAD:main --force 
+      #   env:
+      #     TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+      #     REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+      #     IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
 
       - name: Slack Notification for deployment
         id: slack_notif
@@ -220,7 +226,7 @@ jobs:
       - id: "check_status"
         name: "Check deployment status in cluster"
         run: |-
-          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME < 7 ]];do sleep $(( NEXT_WAIT_TIME++ ));done;
+          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME < $MAX_STATUS_TRIES ]];do sleep $(( NEXT_WAIT_TIME++ ));done;
           FINAL_STATUS=$(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")
           echo "Status of deployment is $FINAL_STATUS"
           echo '::set-output name=final_status::'$FINAL_STATUS
