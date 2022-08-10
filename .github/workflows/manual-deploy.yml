@@ -228,7 +228,7 @@ jobs:
         run: |-
           echo "Next line is max status tries"
           echo $MAX_STATUS_TRIES
-          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME < $MAX_STATUS_TRIES ]];do echo $NEXT_WAIT_TIME;sleep $(( NEXT_WAIT_TIME++ ));done;
+          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME -lt $MAX_STATUS_TRIES ]];do echo $NEXT_WAIT_TIME;sleep $(( NEXT_WAIT_TIME++ ));done;
           FINAL_STATUS=$(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")
           echo "Status of deployment is $FINAL_STATUS"
           echo '::set-output name=final_status::'$FINAL_STATUS
