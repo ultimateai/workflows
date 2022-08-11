@@ -27,6 +27,11 @@ on:
           required: true 
           type: string
           description: "Which branch you want to build and deploy to dev"
+        test_command:
+          required: false
+          type: string
+          description: "Command for running your tests, defaults to - npm run test"
+          default: "npm run test"
         
         
 
@@ -38,6 +43,7 @@ env:
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
   BRANCH_NAME: ${{ inputs.branch_name }}
+  TEST_COMMAND: ${{ inputs.test_command }}
 
 
 jobs:
