@@ -11,10 +11,6 @@ on:
           required: true
           type: string
           description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
-        environment:
-          required: true
-          type: string
-          description: "In which environment do you want to deploy"
         github_email:
           required: true
           type: string
@@ -38,7 +34,6 @@ on:
 env:
   IMAGE_REPO: ${{ inputs.image_repo }}
   APP_SQUAD: ${{ inputs.app_squad }}
-  ENVIRONMENT: ${{ inputs.environment }}
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
