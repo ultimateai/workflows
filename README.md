@@ -87,7 +87,7 @@ Input needed:
     - image_repo: container registry (like eu.gcr.io/ultimateai-169214)
     - app_squad: folder inside k8s-repo containing your kustomize code (backend, qa, ia...)
     - environment: In which environment do you want to deploy
-    - version: Which tag do you want to rollback to
+    - version: Which tag do you want to rollback to. Mandatory!
     - github_email: automatic bot email for commiting 
     - github_user: automatic bot user for commiting 
     - k8s_manifests_repo: {organization}/{repo} containing your argoCD-linked repo like ultimateai/k8s-manifests
