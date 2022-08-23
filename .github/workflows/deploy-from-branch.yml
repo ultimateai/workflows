@@ -74,7 +74,8 @@ jobs:
       - id: get_image_tag
         name: Get image tag from branch name and commitId
         run: |- 
-          TAG=$BRANCH_NAME-$(git rev-parse --short HEAD)
+          FIXED_BRANCH_NAME=echo "$BRANCH_NAME" | tr / -
+          TAG=$FIXED_BRANCH_NAME-$(git rev-parse --short HEAD)
           echo $TAG
           echo '::set-output name=image_tag::'$TAG
 
