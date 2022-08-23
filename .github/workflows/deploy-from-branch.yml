@@ -139,6 +139,10 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
 
       ##Deploy to dev
+      - name: Get dev.env file
+        run: |-
+          cat "dev.env" > $HOME/dev-copy.env
+
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
         with:
@@ -148,6 +152,7 @@ jobs:
       - name: Update the Image tags for Dev Environment
         run: |-
             cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
+            cat $HOME/dev-copy.env > dev.env
             kustomize edit set image app=${IMAGE_NAME}:${TAG}
             cat kustomization.yaml
             git config --local user.email $GITHUB_EMAIL
