@@ -103,7 +103,7 @@ jobs:
         run: |-
           if [[ "${ENVIRONMENT}" = "production" ]]; then
             cat "prod.env" > $HOME/envfile.env
-          elif [[ "${ENVIRONMENT}" = "staging" ]];
+          elif [[ "${ENVIRONMENT}" = "staging" ]]; then
             cat "stage.env" > $HOME/envfile.env
           else
             cat "dev.env" > $HOME/envfile.env
