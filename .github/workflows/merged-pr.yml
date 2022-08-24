@@ -87,6 +87,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Get environment.env file for updating k8s-manifest repo
+        run: |-
+          if [[ "${AUTOMATIC_DEPLOYMENT_TO}" = "staging" ]];
+            cat "stage.env" > $HOME/envfile.env
+          else
+            cat "dev.env" > $HOME/envfile.env
+          fi
+          if [[ -f "common.env" ]]; then
+            cat "common.env" > $HOME/commonfile.env
+          fi
+
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"
         run: |- 
@@ -155,7 +166,11 @@ jobs:
       - name: Update the Image tags for Dev Environment
         run: |-
           if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then
+            if [[ -f "$HOME/commonfile.env" ]]; then
+              cat $HOME/commonfile.env > $APP_SQUAD/${{ github.event.repository.name }}/base/base.env
+            fi          
             cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
+            FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
             cat kustomization.yaml
             git config --local user.email $GITHUB_EMAIL
