@@ -89,7 +89,7 @@ jobs:
 
       - name: Get environment.env file for updating k8s-manifest repo
         run: |-
-          if [[ "${AUTOMATIC_DEPLOYMENT_TO}" = "staging" ]];
+          if [[ "${AUTOMATIC_DEPLOYMENT_TO}" = "staging" ]]; then
             cat "stage.env" > $HOME/envfile.env
           else
             cat "dev.env" > $HOME/envfile.env
