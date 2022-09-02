@@ -51,9 +51,15 @@ jobs:
       - name: Install npm Packages
         run: npm install
 
+      - name: Lint
+        run: npm run lint
+      
       - name: Test
         if: ${{ env.TEST_COMMAND }}
         run: $TEST_COMMAND
+
+      - name: build
+        run: npm run build
 
       - name: Docker build
         run: |-

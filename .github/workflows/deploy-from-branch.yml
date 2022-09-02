@@ -142,7 +142,7 @@ jobs:
       ##Deploy to dev
       - name: Get dev.env file
         run: |-
-          cat "dev.env" > $HOME/dev-copy.env
+          cat "deployment_envs/dev.env" > $HOME/dev-copy.env
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
