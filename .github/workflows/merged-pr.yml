@@ -137,6 +137,15 @@ jobs:
           registry: "eu.gcr.io"
           username: "oauth2accesstoken"
           password: "${{ steps.auth.outputs.access_token }}"
+
+      - name: Install npm Packages
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: build
+        run: npm run build
       
       - name: Docker build
         run: |-

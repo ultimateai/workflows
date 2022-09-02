@@ -105,6 +105,12 @@ jobs:
         if: ${{ env.TEST_COMMAND }}
         run: $TEST_COMMAND
 
+      - name: Lint
+        run: npm run lint
+
+      - name: build
+        run: npm run build
+
        ### Authentings with Google Cloud to Push Image to GCR ###
       - id: "auth"
         name: "Authenticate to Google Cloud"
