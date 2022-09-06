@@ -48,15 +48,28 @@ jobs:
           key: npm-${{ hashFiles('package-lock.json') }}
           restore-keys: npm-
 
-      - name: Install npm Packages
-        run: npm install
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v0"
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
+          service_account: ${{ secrets.GSA_GCR_EMAIL }}
 
-      - name: Lint
-        run: npm run lint
-      
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v0"
+
+      - name: Install npm Packages
+        run: |
+          npm run artifactregistry-login
+          npm i
+          
       - name: Test
         if: ${{ env.TEST_COMMAND }}
         run: $TEST_COMMAND
+
+      - name: Lint
+        run: npm run lint
 
       - name: build
         run: npm run build
