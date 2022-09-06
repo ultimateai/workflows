@@ -83,7 +83,7 @@ jobs:
       - name: Verify if Dockerfile has been changed
         id: check_change_in_dockerfile
         run: |
-          FILES_CHANGED=${{ steps.changed-files.outputs.all_changed_files }}
+          FILES_CHANGED="${{ steps.changed-files.outputs.all_changed_files }}"
           for file in $FILES_CHANGED; do
             echo "$file was changed"
           done
