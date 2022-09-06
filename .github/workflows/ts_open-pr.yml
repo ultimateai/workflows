@@ -61,7 +61,9 @@ jobs:
 
       - name: Install npm Packages
         run: |
-          npm run artifactregistry-login
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login
+          fi
           npm i
           
       - name: Test
@@ -87,7 +89,6 @@ jobs:
           if [[ " ${steps.changed-files.outputs.all_changed_files[*]} " =~ " Dockerfile " ]]; then
             echo '::set-output name=dockerfile_changed::True'
           fi
-
 
       - name: Docker build
         if: steps.check_change_in_dockerfile.outputs.dockerfile_changed == 'True'

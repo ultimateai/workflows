@@ -112,9 +112,11 @@ jobs:
 
       - name: Install npm Packages
         run: |
-          npm run artifactregistry-login
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login
+          fi
           npm i
-          
+
       - name: Test
         if: ${{ env.TEST_COMMAND }}
         run: $TEST_COMMAND
