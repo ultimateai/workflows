@@ -87,7 +87,8 @@ jobs:
             echo "$file was changed"
           done
           if [[ " ${{ steps.changed-files.outputs.all_changed_files[*] }} " =~ "Dockerfile" ]]; then
-            echo '::set-output name=dockerfile_changed::True'
+            echo "THIIIIIS IIIIIS TRUEEEE BABEEEEE"
+            echo '::set-output name=dockerfile_changed::'True
           fi
 
       - name: Docker build
