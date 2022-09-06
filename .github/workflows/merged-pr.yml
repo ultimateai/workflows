@@ -143,8 +143,19 @@ jobs:
           username: "oauth2accesstoken"
           password: "${{ steps.auth.outputs.access_token }}"
 
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v0"
+
       - name: Install npm Packages
-        run: npm install
+        run: |
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login
+          fi
+          npm i
+          
+      - name: Test
+        if: ${{ env.TEST_COMMAND }}
+        run: $TEST_COMMAND
 
       - name: Lint
         run: npm run lint
@@ -177,7 +188,7 @@ jobs:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           
-      - name: Update the Image tags for Dev Environment
+      - name: Update the Image tags for Preproduction Environment
         run: |-
           if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then
             if [[ -f "$HOME/commonfile.env" ]]; then

@@ -98,8 +98,24 @@ jobs:
           key: npm-${{ hashFiles('package-lock.json') }}
           restore-keys: npm-
 
+       ### Authentings with Google Cloud to Push Image to GCR ###
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v0"
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
+          service_account: ${{ secrets.GSA_GCR_EMAIL }}
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v0"
+
       - name: Install npm Packages
-        run: npm install
+        run: |
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login
+          fi
+          npm i
 
       - name: Test
         if: ${{ env.TEST_COMMAND }}
@@ -110,15 +126,6 @@ jobs:
 
       - name: build
         run: npm run build
-
-       ### Authentings with Google Cloud to Push Image to GCR ###
-      - id: "auth"
-        name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v0"
-        with:
-          token_format: "access_token"
-          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
-          service_account: ${{ secrets.GSA_GCR_EMAIL }}
 
       - name: "Authenticating docker to push to gcr"
         uses: "docker/login-action@v1"
