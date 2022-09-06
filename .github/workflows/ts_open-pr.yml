@@ -74,7 +74,23 @@ jobs:
       - name: build
         run: npm run build
 
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v29.0.3
+
+      - name: Verify if Dockerfile has been changed
+        id: check_change_in_dockerfile
+        run: |
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "$file was changed"
+          done
+          if [[ " ${steps.changed-files.outputs.all_changed_files[*]} " =~ " Dockerfile " ]]; then
+            echo '::set-output name=dockerfile_changed::True'
+          fi
+
+
       - name: Docker build
+        if: steps.check_change_in_dockerfile.outputs.dockerfile_changed == 'True'
         run: |-
           echo "$SSH_KEY" > id_rsa
           docker build .

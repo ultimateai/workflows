@@ -186,7 +186,7 @@ jobs:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           
-      - name: Update the Image tags for Dev Environment
+      - name: Update the Image tags for Preproduction Environment
         run: |-
           if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then
             if [[ -f "$HOME/commonfile.env" ]]; then
