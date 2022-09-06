@@ -84,7 +84,6 @@ jobs:
         id: check_change_in_dockerfile
         run: |
           FILES_CHANGED=${{ steps.changed-files.outputs.all_changed_files }}
-          echo $FILES_CHANGED
           for file in $FILES_CHANGED; do
             echo "$file was changed"
           done
