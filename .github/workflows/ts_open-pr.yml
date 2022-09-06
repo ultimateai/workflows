@@ -83,10 +83,12 @@ jobs:
       - name: Verify if Dockerfile has been changed
         id: check_change_in_dockerfile
         run: |
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          FILES_CHANGED=${{ steps.changed-files.outputs.all_changed_files }}
+          echo $FILES_CHANGED
+          for file in $FILES_CHANGED; do
             echo "$file was changed"
           done
-          if [[ ${{ steps.changed-files.outputs.all_changed_files[*] }} =~ "Dockerfile" ]]; then
+          if [[ " ${FILES_CHANGED[*]} " =~ "Dockerfile" ]]; then
             echo "THIIIIIS IIIIIS TRUEEEE BABEEEEE"
             echo '::set-output name=dockerfile_changed::'True
           fi
