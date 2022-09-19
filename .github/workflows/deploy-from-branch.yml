@@ -32,6 +32,10 @@ on:
           type: string
           description: "Command for running your tests, defaults to - npm run test"
           default: "npm run test"
+        app_names:
+          required: false
+          type: string
+          description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
         
         
 
@@ -44,6 +48,7 @@ env:
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
   BRANCH_NAME: ${{ inputs.branch_name }}
   TEST_COMMAND: ${{ inputs.test_command }}
+  APP_NAMES: ${{ inputs.app_names }}
 
 
 jobs:
@@ -70,6 +75,15 @@ jobs:
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
           echo $IMAGE_NAME
           echo '::set-output name=image_name::'$IMAGE_NAME
+
+      - id: "app_names"
+        name: "Get app_names if necessary"
+        run: |- 
+          if [[ -z "${APP_NAMES}" ]]; then
+            APP_NAMES=${{ github.event.repository.name }}
+          fi
+          echo $APP_NAMES
+          echo '::set-output name=app_names::'$APP_NAMES
 
       - id: get_image_tag
         name: Get image tag from branch name and commitId
@@ -155,7 +169,15 @@ jobs:
       ##Deploy to dev
       - name: Get dev.env file
         run: |-
-          cat "deployment_envs/dev.env" > $HOME/dev-copy.env
+          if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name/dev-copy.env
+              done
+          else
+            cat "deployment_envs/dev.env" > $HOME/dev-copy.env
+          fi
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
@@ -165,16 +187,32 @@ jobs:
           
       - name: Update the Image tags for Dev Environment
         run: |-
-            cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
-            cat $HOME/dev-copy.env > dev.env
-            kustomize edit set image app=${IMAGE_NAME}:${TAG}
-            cat kustomization.yaml
-            git config --local user.email $GITHUB_EMAIL
-            git config --local user.name $GITHUB_USER
-            git commit -m "update image to ${IMAGE_NAME}:${TAG}" -a
-            git push ${REMOTE_REPO} HEAD:main --force 
+            if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                cd $APP_SQUAD/$app_name/overlay/${K8S_ENV_NAME}
+                cat $HOME/$app_name/dev-copy.env > dev.env
+                kustomize edit set image app=${IMAGE_NAME}:${TAG}
+                cat kustomization.yaml
+                git config --local user.email $GITHUB_EMAIL
+                git config --local user.name $GITHUB_USER
+                git commit -m "update image to ${IMAGE_NAME}:${TAG}" -a
+                git push ${REMOTE_REPO} HEAD:main --force
+              done 
+            else
+              cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
+              cat $HOME/dev-copy.env > dev.env
+              kustomize edit set image app=${IMAGE_NAME}:${TAG}
+              cat kustomization.yaml
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update image to ${IMAGE_NAME}:${TAG}" -a
+              git push ${REMOTE_REPO} HEAD:main --force 
+            fi
         env:
           TAG: ${{ steps.get_image_tag.outputs.image_tag }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           K8S_ENV_NAME: development
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
