@@ -32,6 +32,11 @@ on:
           type: string
           description: "Command for running your tests, defaults to - npm run test"
           default: "npm run test"
+        npm_install_command:
+          required: false
+          type: string
+          description: "Command for npm i, defaults to - npm i"
+          default: "npm i"
         app_names:
           required: false
           type: string
@@ -49,6 +54,7 @@ env:
   BRANCH_NAME: ${{ inputs.branch_name }}
   TEST_COMMAND: ${{ inputs.test_command }}
   APP_NAMES: ${{ inputs.app_names }}
+  NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
 
 
 jobs:
@@ -84,6 +90,18 @@ jobs:
           fi
           echo $APP_NAMES
           echo '::set-output name=app_names::'$APP_NAMES
+
+      - name: Get dev.env file
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-dev-copy.env
+              done
+          else
+            cat "deployment_envs/dev.env" > $HOME/dev-copy.env
+          fi
 
       - id: get_image_tag
         name: Get image tag from branch name and commitId
@@ -129,7 +147,7 @@ jobs:
           if grep -q artifactregistry-login "package.json"; then
             npm run artifactregistry-login
           fi
-          npm i
+          $NPM_INSTALL_COMMAND
 
       - name: Test
         if: ${{ env.TEST_COMMAND }}
@@ -167,18 +185,6 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
 
       ##Deploy to dev
-      - name: Get dev.env file
-        run: |-
-          if [[ $APP_NAMES == *","* ]]; then
-              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
-              for app_name in "${array_app_names[@]}"
-              do
-                cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-dev-copy.env
-              done
-          else
-            cat "deployment_envs/dev.env" > $HOME/dev-copy.env
-          fi
-
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
         with:
