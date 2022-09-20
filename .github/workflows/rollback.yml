@@ -138,6 +138,7 @@ jobs:
           fi
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
       - name: Check old deployed version in env to improve slack message
         id: get_old_version
