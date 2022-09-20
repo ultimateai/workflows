@@ -41,6 +41,12 @@ on:
           required: false
           type: string
           description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
+        node_version:
+          required: false
+          type: string
+          default: "16.x"
+          description: "Node version used in the pipeline, defaults to 16.x"
+
         
         
 
@@ -55,6 +61,7 @@ env:
   TEST_COMMAND: ${{ inputs.test_command }}
   APP_NAMES: ${{ inputs.app_names }}
   NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
+  NODE_VERSION: ${{ inputs.node_version }}
 
 
 jobs:
@@ -73,7 +80,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16.x'
+          node-version: ${{ env.NODE_VERSION }}
           
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"

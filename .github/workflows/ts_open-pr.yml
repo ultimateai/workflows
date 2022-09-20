@@ -13,10 +13,16 @@ on:
         type: string
         description: "Command for npm i, defaults to - npm i"
         default: "npm i"
+      node_version:
+        required: false
+        type: string
+        default: "16.x"
+        description: "Node version used in the pipeline, defaults to 16.x"
 
 env:
   TEST_COMMAND: ${{ inputs.test_command }}
   NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
+  NODE_VERSION: ${{ inputs.node_version }}
 
 
 jobs:
@@ -33,7 +39,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16.x'
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Export Home
         run: echo "HOME=/root" >> $GITHUB_ENV
