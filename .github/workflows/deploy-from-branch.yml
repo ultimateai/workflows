@@ -199,6 +199,7 @@ jobs:
                 git config --local user.name $GITHUB_USER
                 git commit -m "update $app_name image to ${IMAGE_NAME}:${TAG}" -a
                 git push ${REMOTE_REPO} HEAD:main --force
+                cd ../../../../
               done 
             else
               cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
