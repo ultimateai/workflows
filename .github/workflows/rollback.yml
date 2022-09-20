@@ -35,6 +35,10 @@ on:
           required: false
           type: string
           description: "Users allowed to deploy specific versions - format should be like user1,user2,user3"
+        app_names:
+          required: false
+          type: string
+          description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
 
 
 env:
@@ -46,6 +50,7 @@ env:
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
   ALLOWED_USERS: ${{ inputs.allowed_users }}
+  APP_NAMES: ${{ inputs.app_names }}
 
 
 jobs:
@@ -77,6 +82,15 @@ jobs:
         run: |-
           TAG=$VERSION
           echo '::set-output name=tag::'$TAG
+
+      - id: "app_names"
+        name: "Get app_names if necessary"
+        run: |- 
+          if [[ -z "${APP_NAMES}" ]]; then
+            APP_NAMES=${{ github.event.repository.name }}
+          fi
+          echo $APP_NAMES
+          echo '::set-output name=app_names::'$APP_NAMES
 
       # - id: tag_to_deploy
       #   name: Calculate version to deploy
@@ -116,7 +130,7 @@ jobs:
       - name: Check if version is already deployed in stage, if trying to deploy in prod
         run: |-
           if [[ "${ENVIRONMENT}" == "production" ]]; then
-            STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+            STAGE_VERSION=$(cat $APP_SQUAD/$APP_NAMES/overlay/staging/kustomization.yaml | yq .images.0.newTag)
             if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
               echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
               exit 1
@@ -124,28 +138,46 @@ jobs:
           fi
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
       - name: Check old deployed version in env to improve slack message
         id: get_old_version
         run: |-
-          OLD_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
+          OLD_VERSION=$(cat $APP_SQUAD/$APP_NAMES/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
           echo '::set-output name=old_version::'$OLD_VERSION
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
           
       - name: Update the Image tags for Selected Environment
         run: |-
-          cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
-          kustomize edit set image app=${IMAGE_NAME}:${TAGS}
-          cat kustomization.yaml
-          git config --local user.email $GITHUB_EMAIL
-          git config --local user.name $GITHUB_USER
-          git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
-          git push ${REMOTE_REPO} HEAD:main --force 
+          if [[ $APP_NAMES == *","* ]]; then
+            IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+            for app_name in "${array_app_names[@]}"
+            do
+              cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              cat kustomization.yaml
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "Rollback $app_name image to ${IMAGE_NAME}:${TAGS}" -a
+              git push ${REMOTE_REPO} HEAD:main --force 
+              cd ../../../../
+            done 
+          else
+            cd $APP_SQUAD/$APP_NAMES/overlay/$ENVIRONMENT
+            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+            cat kustomization.yaml
+            git config --local user.email $GITHUB_EMAIL
+            git config --local user.name $GITHUB_USER
+            git commit -m "Rollback image to ${IMAGE_NAME}:${TAGS}" -a
+            git push ${REMOTE_REPO} HEAD:main --force 
+          fi
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
       - name: Slack Notification for rollback
         id: slack_notif_rollback

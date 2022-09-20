@@ -41,6 +41,15 @@ on:
           type: string
           description: "To which env you want to automatically deploy"
           default: "development"
+        npm_install_command:
+          required: false
+          type: string
+          description: "Command for npm i, defaults to - npm i"
+          default: "npm i"
+        app_names:
+          required: false
+          type: string
+          description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
         
         
 
@@ -54,7 +63,8 @@ env:
   CHANGELOG: ${{ inputs.changelog }}
   INITIAL_RELEASE: ${{ inputs.initial_release }}
   AUTOMATIC_DEPLOYMENT_TO: ${{ inputs.automatic_deployment_to }}
-  
+  APP_NAMES: ${{ inputs.app_names }}
+  NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
 
 jobs:
   bump-release:
@@ -92,24 +102,48 @@ jobs:
         with:
           node-version: '16.x'
 
-      - name: Get environment.env file for updating k8s-manifest repo
-        run: |-
-          if [[ "${AUTOMATIC_DEPLOYMENT_TO}" = "staging" ]]; then
-            cat "deployment_envs/stage.env" > $HOME/envfile.env
-          else
-            cat "deployment_envs/dev.env" > $HOME/envfile.env
-          fi
-          if [[ -f "common.env" ]]; then
-            cat "deployment_envs/common.env" > $HOME/commonfile.env
-          fi
-
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"
         run: |- 
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
           echo $IMAGE_NAME
           echo '::set-output name=image_name::'$IMAGE_NAME
+      
+      - id: "app_names"
+        name: "Get app_names if necessary"
+        run: |- 
+          if [[ -z "${APP_NAMES}" ]]; then
+            APP_NAMES=${{ github.event.repository.name }}
+          fi
+          echo $APP_NAMES
+          echo '::set-output name=app_names::'$APP_NAMES
 
+      - name: Get environment.env file for updating k8s-manifest repo
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                if [[ "${AUTOMATIC_DEPLOYMENT_TO}" = "staging" ]]; then
+                  cat "deployment_envs/$app_name/stage.env" > $HOME/$app_name-envfile.env
+                else
+                  cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-envfile.env
+                fi
+                if [[ -f "deployment_envs/$app_name/common.env" ]]; then
+                  cat "deployment_envs/$app_name/common.env" > $HOME/$app_name-commonfile.env
+                fi
+              done
+          else
+            if [[ "${AUTOMATIC_DEPLOYMENT_TO}" = "staging" ]]; then
+              cat "deployment_envs/stage.env" > $HOME/envfile.env
+            else
+              cat "deployment_envs/dev.env" > $HOME/envfile.env
+            fi
+            if [[ -f "deployment_envs/common.env" ]]; then
+              cat "deployment_envs/common.env" > $HOME/commonfile.env
+            fi
+          fi
+          
       - id: fetch_latest_release
         uses: gregziegan/fetch-latest-release@v2.0.0
         with:
@@ -151,7 +185,7 @@ jobs:
           if grep -q artifactregistry-login "package.json"; then
             npm run artifactregistry-login
           fi
-          npm i
+          $NPM_INSTALL_COMMAND
           
       - name: Test
         if: ${{ env.TEST_COMMAND }}
@@ -191,17 +225,36 @@ jobs:
       - name: Update the Image tags for Preproduction Environment
         run: |-
           if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then
-            if [[ -f "$HOME/commonfile.env" ]]; then
-              cat $HOME/commonfile.env > $APP_SQUAD/${{ github.event.repository.name }}/base/base.env
-            fi          
-            cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
-            FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
-            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
-            cat kustomization.yaml
-            git config --local user.email $GITHUB_EMAIL
-            git config --local user.name $GITHUB_USER
-            git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
-            git push ${REMOTE_REPO} HEAD:main --force 
+            if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                if [[ -f "$HOME/$app_name-commonfile.env" ]]; then
+                  cat $HOME/$app_name-commonfile.env > $APP_SQUAD/$app_name/base/base.env
+                fi          
+                cd $APP_SQUAD/$app_name/overlay/${K8S_ENV_NAME}
+                FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+                kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+                cat kustomization.yaml
+                git config --local user.email $GITHUB_EMAIL
+                git config --local user.name $GITHUB_USER
+                git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a
+                git push ${REMOTE_REPO} HEAD:main --force 
+                cd ../../../../
+              done 
+            else
+              if [[ -f "$HOME/commonfile.env" ]]; then
+                cat $HOME/commonfile.env > $APP_SQUAD/${APP_NAMES}/base/base.env
+              fi          
+              cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
+              FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              cat kustomization.yaml
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
+              git push ${REMOTE_REPO} HEAD:main --force
+            fi
           else
             echo "You want to deploy automatically to ${K8S_ENV_NAME}, which is not development nor staging. This is not allowed."
             exit 1
@@ -211,4 +264,5 @@ jobs:
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           K8S_ENV_NAME: ${{ env.AUTOMATIC_DEPLOYMENT_TO }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
       

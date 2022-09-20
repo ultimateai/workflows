@@ -61,6 +61,11 @@ on:
           type: number
           description: "Marks increasing wait time for step checking deployment status"
           default: 12
+        app_names:
+          required: false
+          type: string
+          description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
+
         
         
 
@@ -80,6 +85,7 @@ env:
   TESTIM_SUITE: ${{ inputs.testim_suite }}
   TESTIM_ADDITIONAL_FLAGS: ${{ inputs.testim_additional_flags }}
   MAX_STATUS_TRIES: ${{ inputs.max_status_tries }}
+  APP_NAMES: ${{ inputs.app_names }}
 
 
 jobs:
@@ -98,19 +104,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
-      - name: Get environment.env file for updating k8s-manifest repo
-        run: |-
-          if [[ "${ENVIRONMENT}" = "production" ]]; then
-            cat "deployment_envs/prod.env" > $HOME/envfile.env
-          elif [[ "${ENVIRONMENT}" = "staging" ]]; then
-            cat "deployment_envs/stage.env" > $HOME/envfile.env
-          else
-            cat "deployment_envs/dev.env" > $HOME/envfile.env
-          fi
-          if [[ -f "deployment_envs/common.env" ]]; then
-            cat "deployment_envs/common.env" > $HOME/commonfile.env
-          fi
   
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"
@@ -118,6 +111,47 @@ jobs:
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
           echo $IMAGE_NAME
           echo '::set-output name=image_name::'$IMAGE_NAME
+      
+      - id: "app_names"
+        name: "Get app_names if necessary"
+        run: |- 
+          if [[ -z "${APP_NAMES}" ]]; then
+            APP_NAMES=${{ github.event.repository.name }}
+          fi
+          echo $APP_NAMES
+          echo '::set-output name=app_names::'$APP_NAMES
+          
+      - name: Get environment.env file for updating k8s-manifest repo
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                if [[ "${ENVIRONMENT}" = "production" ]]; then
+                  cat "deployment_envs/$app_name/prod.env" > $HOME/$app_name-envfile.env
+                elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+                  cat "deployment_envs/$app_name/stage.env" > $HOME/$app_name-envfile.env
+                else
+                  cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-envfile.env
+                fi
+                if [[ -f "deployment_envs/$app_name/common.env" ]]; then
+                  cat "deployment_envs/$app_name/common.env" > $HOME/$app_name-commonfile.env
+                fi
+              done
+          else
+            if [[ "${ENVIRONMENT}" = "production" ]]; then
+              cat "deployment_envs/prod.env" > $HOME/envfile.env
+            elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+              cat "deployment_envs/stage.env" > $HOME/envfile.env
+            else
+              cat "deployment_envs/dev.env" > $HOME/envfile.env
+            fi
+            if [[ -f "deployment_envs/common.env" ]]; then
+              cat "deployment_envs/common.env" > $HOME/commonfile.env
+            fi
+          fi
+
+          
 
       - id: fetch_latest_release
         uses: gregziegan/fetch-latest-release@v2.0.0
@@ -158,28 +192,49 @@ jobs:
       - name: Check old deployed version in env to improve slack message
         id: get_old_version
         run: |-
-          OLD_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
+          OLD_VERSION=$(cat $APP_SQUAD/$APP_NAMES/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
           echo '::set-output name=old_version::'$OLD_VERSION
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
           
       - name: Update the Image tags and env files for Selected Environment
         run: |-
-          if [[ -f "$HOME/commonfile.env" ]]; then
-            cat $HOME/commonfile.env > $APP_SQUAD/${{ github.event.repository.name }}/base/base.env
+          if [[ $APP_NAMES == *","* ]]; then
+            IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+            for app_name in "${array_app_names[@]}"
+            do
+              if [[ -f "$HOME/commonfile.env" ]]; then
+                cat $HOME/$app_name-commonfile.env > $APP_SQUAD/$app_name/base/base.env
+              fi
+              cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
+              FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              cat kustomization.yaml
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a
+              git push ${REMOTE_REPO} HEAD:main --force 
+              cd ../../../../
+            done 
+          else
+            if [[ -f "$HOME/commonfile.env" ]]; then
+              cat $HOME/commonfile.env > $APP_SQUAD/${APP_NAMES}/base/base.env
+            fi
+            cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
+            FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+            cat kustomization.yaml
+            git config --local user.email $GITHUB_EMAIL
+            git config --local user.name $GITHUB_USER
+            git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
+            git push ${REMOTE_REPO} HEAD:main --force 
           fi
-          cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
-          FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
-          kustomize edit set image app=${IMAGE_NAME}:${TAGS}
-          cat kustomization.yaml
-          git config --local user.email $GITHUB_EMAIL
-          git config --local user.name $GITHUB_USER
-          git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
-          git push ${REMOTE_REPO} HEAD:main --force 
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
       - name: Slack Notification for deployment
         id: slack_notif
