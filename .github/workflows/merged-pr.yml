@@ -238,7 +238,7 @@ jobs:
                 cat kustomization.yaml
                 git config --local user.email $GITHUB_EMAIL
                 git config --local user.name $GITHUB_USER
-                git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
+                git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a
                 git push ${REMOTE_REPO} HEAD:main --force 
                 cd ../../../../
               done 

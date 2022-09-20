@@ -146,6 +146,7 @@ jobs:
           echo '::set-output name=old_version::'$OLD_VERSION
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
           
       - name: Update the Image tags for Selected Environment
         run: |-
