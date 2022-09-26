@@ -143,11 +143,10 @@ jobs:
       - name: Check old deployed version in env to improve slack message
         id: get_old_version
         run: |-
-          OLD_VERSION=$(cat $APP_SQUAD/$APP_NAMES/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
+          OLD_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
           echo '::set-output name=old_version::'$OLD_VERSION
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
           
       - name: Update the Image tags for Selected Environment
         run: |-

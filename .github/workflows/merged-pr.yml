@@ -39,8 +39,8 @@ on:
         automatic_deployment_to:
           required: false
           type: string
-          description: "To which env you want to automatically deploy"
-          default: "development"
+          description: "To which env you want to automatically deploy - defaults to staging"
+          default: "staging"
         npm_install_command:
           required: false
           type: string
@@ -55,6 +55,21 @@ on:
           type: string
           default: "16.x"
           description: "Node version used in the pipeline, defaults to 16.x"
+        test_command:
+          required: false
+          type: string
+          description: "Command for running your tests, defaults to - npm run test"
+          default: "npm run test"
+        build_command:
+          required: false
+          type: string
+          description: "Command for running npm run build, defaults to - npm run build"
+          default: "npm run build"
+        lint_command:
+          required: false
+          type: string
+          description: "Command for running npm run lint, defaults to - npm run lint"
+          default: "npm run lint"
         
         
 
@@ -71,6 +86,9 @@ env:
   APP_NAMES: ${{ inputs.app_names }}
   NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
   NODE_VERSION: ${{ inputs.node_version }}
+  TEST_COMMAND: ${{ inputs.test_command }}
+  BUILD_COMMAND: ${{ inputs.build_command }}
+  LINT_COMMAND: ${{ inputs.lint_command }}
 
 jobs:
   bump-release:
@@ -83,7 +101,7 @@ jobs:
           fetch-depth: 0
 
       - name: Bump version and release
-        uses: ultimateai/bump-action@v0.5.4
+        uses: ultimateai/bump-action@v0.5.6
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
@@ -198,10 +216,12 @@ jobs:
         run: $TEST_COMMAND
 
       - name: Lint
-        run: npm run lint
+        if: ${{ env.LINT_COMMAND }}
+        run: $LINT_COMMAND
 
       - name: build
-        run: npm run build
+        if: ${{ env.BUILD_COMMAND }}
+        run: $BUILD_COMMAND
       
       - name: Docker build
         run: |-
