@@ -101,7 +101,7 @@ jobs:
           fetch-depth: 0
 
       - name: Bump version and release
-        uses: ultimateai/bump-action@v0.5.5
+        uses: ultimateai/bump-action@feat/changelog
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
