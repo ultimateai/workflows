@@ -272,40 +272,87 @@ jobs:
           
       - name: Update the Image tags for Preproduction Environment
         run: |-
-          if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then
-            if [[ $APP_NAMES == *","* ]]; then
-              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
-              for app_name in "${array_app_names[@]}"
-              do
-                if [[ -f "$HOME/$app_name-commonfile.env" ]]; then
-                  cat $HOME/$app_name-commonfile.env > $APP_SQUAD/$app_name/base/base.env
+          echo "Deploying $APP_NAMES at $K8S_ENV_NAME"
+          if [[ $K8S_ENV_NAME == *","* ]]; then
+            echo "Deploying in multiple environments: $K8S_ENV_NAME"
+            IFS=',' read -r -a envs <<< "$K8S_ENV_NAME"
+            for env in "${envs[@]}"
+            do
+              if [[ $env == "development" || $env == "staging"  ]]; then
+                if [[ $APP_NAMES == *","* ]]; then
+                  IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+                  for app_name in "${array_app_names[@]}"
+                  do
+                    echo "Deploying $app_name at $env"
+                    if [[ -f "$HOME/$app_name-commonfile.env" ]]; then
+                      cat $HOME/$app_name-commonfile.env > $APP_SQUAD/$app_name/base/base.env
+                    fi          
+                    cd $APP_SQUAD/$app_name/overlay/$env
+                    FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+                    kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+                    cat kustomization.yaml
+                    git config --local user.email $GITHUB_EMAIL
+                    git config --local user.name $GITHUB_USER
+                    git commit -m "update $env $app_name image to ${IMAGE_NAME}:${TAGS}" -a
+                    git push ${REMOTE_REPO} HEAD:main --force 
+                    cd ../../../../
+                  done 
+                else
+                  echo "Deploying $APP_NAMES at $env "
+                  if [[ -f "$HOME/commonfile.env" ]]; then
+                    cat $HOME/commonfile.env > $APP_SQUAD/${APP_NAMES}/base/base.env
+                  fi          
+                  cd $APP_SQUAD/${APP_NAMES}/overlay/$env
+                  FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+                  kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+                  cat kustomization.yaml
+                  git config --local user.email $GITHUB_EMAIL
+                  git config --local user.name $GITHUB_USER
+                  git commit -m "update $env image to ${IMAGE_NAME}:${TAGS}" -a
+                  git push ${REMOTE_REPO} HEAD:main --force
+                  cd ../../../../
+                fi
+              else
+                echo "You want to deploy automatically to $env, which is not development nor staging. This is not allowed."
+                exit 1
+              fi
+            done
+          else
+            if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then
+              if [[ $APP_NAMES == *","* ]]; then
+                IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+                for app_name in "${array_app_names[@]}"
+                do
+                  if [[ -f "$HOME/$app_name-commonfile.env" ]]; then
+                    cat $HOME/$app_name-commonfile.env > $APP_SQUAD/$app_name/base/base.env
+                  fi          
+                  cd $APP_SQUAD/$app_name/overlay/${K8S_ENV_NAME}
+                  FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+                  kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+                  cat kustomization.yaml
+                  git config --local user.email $GITHUB_EMAIL
+                  git config --local user.name $GITHUB_USER
+                  git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a
+                  git push ${REMOTE_REPO} HEAD:main --force 
+                  cd ../../../../
+                done 
+              else
+                if [[ -f "$HOME/commonfile.env" ]]; then
+                  cat $HOME/commonfile.env > $APP_SQUAD/${APP_NAMES}/base/base.env
                 fi          
-                cd $APP_SQUAD/$app_name/overlay/${K8S_ENV_NAME}
-                FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+                cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
+                FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
                 kustomize edit set image app=${IMAGE_NAME}:${TAGS}
                 cat kustomization.yaml
                 git config --local user.email $GITHUB_EMAIL
                 git config --local user.name $GITHUB_USER
-                git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a
-                git push ${REMOTE_REPO} HEAD:main --force 
-                cd ../../../../
-              done 
+                git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
+                git push ${REMOTE_REPO} HEAD:main --force
+              fi
             else
-              if [[ -f "$HOME/commonfile.env" ]]; then
-                cat $HOME/commonfile.env > $APP_SQUAD/${APP_NAMES}/base/base.env
-              fi          
-              cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
-              FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
-              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
-              cat kustomization.yaml
-              git config --local user.email $GITHUB_EMAIL
-              git config --local user.name $GITHUB_USER
-              git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
-              git push ${REMOTE_REPO} HEAD:main --force
+              echo "You want to deploy automatically to ${K8S_ENV_NAME}, which is not development nor staging. This is not allowed."
+              exit 1
             fi
-          else
-            echo "You want to deploy automatically to ${K8S_ENV_NAME}, which is not development nor staging. This is not allowed."
-            exit 1
           fi
         env:
           TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
