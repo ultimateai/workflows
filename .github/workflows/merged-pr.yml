@@ -95,10 +95,14 @@ jobs:
     name: Bump release
     if: github.event.pull_request.merged == true
     runs-on: self-hosted
+    permissions:
+      contents: "read"
+      id-token: "write"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
 
       - name: Bump version and release
         uses: ultimateai/bump-action@v0.5.6
@@ -108,6 +112,24 @@ jobs:
           update_file: ${{ env.UPDATE_FILE }}
           changelog: ${{ env.CHANGELOG }}
           initial_release: ${{ env.INITIAL_RELEASE }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Update package.json after bumping
+        if: ${{ env.UPDATE_FILE == 'package.json'}}
+        run: |-
+          git fetch;git pull
+          npm install --package-lock-only
+          git config --local user.email $GITHUB_EMAIL
+          git config --local user.name $GITHUB_USER
+          git commit -m "Sync package-lock.json" -a
+          git push ${REMOTE_REPO} HEAD:main
+        env: 
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
+
 
   push-and-deploy:
     name: Push image with updated tag and update development environment
