@@ -123,7 +123,7 @@ jobs:
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
           git commit -m "Sync package-lock.json" -a
-          git push ${REMOTE_REPO} HEAD:main --force 
+          git push ${REMOTE_REPO} HEAD:main
         env: 
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
 
