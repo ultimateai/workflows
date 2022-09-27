@@ -108,6 +108,20 @@ jobs:
           update_file: ${{ env.UPDATE_FILE }}
           changelog: ${{ env.CHANGELOG }}
           initial_release: ${{ env.INITIAL_RELEASE }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Update package.json after bumping
+        run: |-
+          npm install --package-lock-only
+          git config --local user.email $GITHUB_EMAIL
+          git config --local user.name $GITHUB_USER
+          git commit -m "Sync package-lock.json" -a
+          git push HEAD:main --force 
+
 
   push-and-deploy:
     name: Push image with updated tag and update development environment
