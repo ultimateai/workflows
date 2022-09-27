@@ -120,6 +120,8 @@ jobs:
       - name: Update package.json after bumping
         run: |-
           npm install --package-lock-only
+          echo ${{ github.event.repository.name }}
+          echo $REMOTE_REPO
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
           git commit -m "Sync package-lock.json" -a
