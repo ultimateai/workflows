@@ -306,6 +306,7 @@ jobs:
                   git config --local user.name $GITHUB_USER
                   git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
                   git push ${REMOTE_REPO} HEAD:main --force
+                  cd ../../../../
                 fi
               else
                 echo "You want to deploy automatically to $env, which is not development nor staging. This is not allowed."
