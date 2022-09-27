@@ -119,14 +119,13 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Update package.json after bumping
+        if: ${{ env.UPDATE_FILE == 'package.json'}}
         run: |-
           git fetch;git pull
           npm install --package-lock-only
-          git status
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
           git commit -m "Sync package-lock.json" -a
-          git fetch;git pull
           git push ${REMOTE_REPO} HEAD:main
         env: 
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
