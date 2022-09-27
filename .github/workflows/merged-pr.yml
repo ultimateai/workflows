@@ -120,14 +120,11 @@ jobs:
 
       - name: Update package.json after bumping
         run: |-
-          cat package-lock.json | grep version | head -1
+          git fetch;git pull
           npm install --package-lock-only
-          cat package.json
-          echo $REMOTE_REPO
           git status
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
-          git fetch;git pull
           git commit -m "Sync package-lock.json" -a
           git fetch;git pull
           git push ${REMOTE_REPO} HEAD:main
