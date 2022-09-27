@@ -275,6 +275,7 @@ jobs:
           if [[ $K8S_ENV_NAME == *","* ]]; then
             IFS=',' read -r -a envs <<< "$K8S_ENV_NAME"
             for env in "${envs[@]}"
+            do
               if [[ $env == "development" || $env == "staging"  ]]; then
                 if [[ $APP_NAMES == *","* ]]; then
                   IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
