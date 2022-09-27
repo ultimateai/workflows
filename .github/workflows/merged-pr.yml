@@ -120,7 +120,9 @@ jobs:
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
           git commit -m "Sync package-lock.json" -a
-          git push HEAD:main --force 
+          git push ${REMOTE_REPO} HEAD:main --force 
+        env: 
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ github.event.repository.name }}.git
 
 
   push-and-deploy:
