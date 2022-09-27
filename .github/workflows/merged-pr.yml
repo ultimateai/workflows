@@ -124,10 +124,11 @@ jobs:
           echo ${{ github.event.repository.name }}
           echo $REMOTE_REPO
           git status
-          git diff package-lock.json
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
+          git fetch;git pull
           git commit -m "Sync package-lock.json" -a
+          git fetch;git pull
           git push ${REMOTE_REPO} HEAD:main
         env: 
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
