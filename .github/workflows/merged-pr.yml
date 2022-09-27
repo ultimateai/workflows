@@ -95,6 +95,9 @@ jobs:
     name: Bump release
     if: github.event.pull_request.merged == true
     runs-on: self-hosted
+    permissions:
+      contents: "read"
+      id-token: "write"
     steps:
       - uses: actions/checkout@v2
         with:
@@ -122,7 +125,7 @@ jobs:
           git commit -m "Sync package-lock.json" -a
           git push ${REMOTE_REPO} HEAD:main --force 
         env: 
-          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ github.event.repository.name }}.git
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
 
 
   push-and-deploy:
