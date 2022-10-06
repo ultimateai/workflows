@@ -130,7 +130,7 @@ jobs:
           git commit -m "Sync package-lock.json to ${BUMPED_VERSION}" -a
           git push ${REMOTE_REPO} HEAD:main
         env: 
-          BUMPED_VERSION: "${{ steps.auth.outputs.next_version }}"
+          BUMPED_VERSION: ${{ steps.bump_version.outputs.next_version }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
 
 
