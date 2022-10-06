@@ -106,7 +106,7 @@ jobs:
 
       - name: Bump version and release
         id: bump_version
-        uses: ultimateai/bump-action@v0.5.6
+        uses: ultimateai/bump-action@synced_version
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
