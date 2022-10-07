@@ -105,7 +105,8 @@ jobs:
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
 
       - name: Bump version and release
-        uses: ultimateai/bump-action@v0.5.6
+        id: bump_version
+        uses: ultimateai/bump-action@v0.5.7
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
@@ -125,9 +126,10 @@ jobs:
           npm install --package-lock-only --no-audit
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
-          git commit -m "Sync package-lock.json" -a
+          git commit -m "Sync package-lock.json to ${BUMPED_VERSION}" -a
           git push ${REMOTE_REPO} HEAD:main
         env: 
+          BUMPED_VERSION: ${{ steps.bump_version.outputs.next_version }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
 
 
