@@ -106,7 +106,7 @@ jobs:
 
       - name: Bump version and release
         id: bump_version
-        uses: ultimateai/bump-action@synced_version
+        uses: ultimateai/bump-action@v0.5.7
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
@@ -123,7 +123,6 @@ jobs:
         if: ${{ env.UPDATE_FILE == 'package.json'}}
         run: |-
           git fetch;git pull
-          echo "$BUMPED_VERSION"
           npm install --package-lock-only --no-audit
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
