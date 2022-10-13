@@ -175,7 +175,7 @@ jobs:
                 if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"staging"* ]]; then
                   cat "deployment_envs/$app_name/stage.env" > $HOME/$app_name-staging-envfile.env
                 fi
-                if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"development"* ]];
+                if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"development"* ]]; then
                   cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-development-envfile.env
                 fi
                 if [[ -f "deployment_envs/$app_name/common.env" ]]; then
@@ -186,7 +186,7 @@ jobs:
             if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"staging"* ]]; then
               cat "deployment_envs/stage.env" > $HOME/staging-envfile.env
             fi
-            if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"development"* ]];
+            if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"development"* ]]; then
               cat "deployment_envs/development.env" > $HOME/development-envfile.env
             fi
             if [[ -f "deployment_envs/common.env" ]]; then
