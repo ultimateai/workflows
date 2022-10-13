@@ -94,7 +94,7 @@ jobs:
   bump-release:
     name: Bump release
     if: github.event.pull_request.merged == true
-    runs-on: self-hosted
+    runs-on: preemptible
     permissions:
       contents: "read"
       id-token: "write"
@@ -135,7 +135,7 @@ jobs:
 
   push-and-deploy:
     name: Push image with updated tag and update development environment
-    runs-on: self-hosted
+    runs-on: preemptible
     needs: bump-release
     permissions:
       contents: "read"
@@ -172,20 +172,22 @@ jobs:
               IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
               for app_name in "${array_app_names[@]}"
               do
-                if [[ "${AUTOMATIC_DEPLOYMENT_TO}" = "staging" ]]; then
-                  cat "deployment_envs/$app_name/stage.env" > $HOME/$app_name-envfile.env
-                else
-                  cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-envfile.env
+                if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"staging"* ]]; then
+                  cat "deployment_envs/$app_name/stage.env" > $HOME/$app_name-staging-envfile.env
+                fi
+                if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"development"* ]];
+                  cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-development-envfile.env
                 fi
                 if [[ -f "deployment_envs/$app_name/common.env" ]]; then
                   cat "deployment_envs/$app_name/common.env" > $HOME/$app_name-commonfile.env
                 fi
               done
           else
-            if [[ "${AUTOMATIC_DEPLOYMENT_TO}" = "staging" ]]; then
-              cat "deployment_envs/stage.env" > $HOME/envfile.env
-            else
-              cat "deployment_envs/dev.env" > $HOME/envfile.env
+            if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"staging"* ]]; then
+              cat "deployment_envs/stage.env" > $HOME/staging-envfile.env
+            fi
+            if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"development"* ]];
+              cat "deployment_envs/development.env" > $HOME/development-envfile.env
             fi
             if [[ -f "deployment_envs/common.env" ]]; then
               cat "deployment_envs/common.env" > $HOME/commonfile.env
@@ -290,7 +292,7 @@ jobs:
                       cat $HOME/$app_name-commonfile.env > $APP_SQUAD/$app_name/base/base.env
                     fi          
                     cd $APP_SQUAD/$app_name/overlay/$env
-                    FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+                    FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-$env-envfile.env > $FILE_ENV
                     kustomize edit set image app=${IMAGE_NAME}:${TAGS}
                     cat kustomization.yaml
                     git config --local user.email $GITHUB_EMAIL
@@ -305,7 +307,7 @@ jobs:
                     cat $HOME/commonfile.env > $APP_SQUAD/${APP_NAMES}/base/base.env
                   fi          
                   cd $APP_SQUAD/${APP_NAMES}/overlay/$env
-                  FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+                  FILE_ENV=$(ls | grep ".env");cat $HOME/$env-envfile.env > $FILE_ENV
                   kustomize edit set image app=${IMAGE_NAME}:${TAGS}
                   cat kustomization.yaml
                   git config --local user.email $GITHUB_EMAIL
@@ -329,7 +331,7 @@ jobs:
                     cat $HOME/$app_name-commonfile.env > $APP_SQUAD/$app_name/base/base.env
                   fi          
                   cd $APP_SQUAD/$app_name/overlay/${K8S_ENV_NAME}
-                  FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+                  FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-${K8S_ENV_NAME}-envfile.env > $FILE_ENV
                   kustomize edit set image app=${IMAGE_NAME}:${TAGS}
                   cat kustomization.yaml
                   git config --local user.email $GITHUB_EMAIL
@@ -343,7 +345,7 @@ jobs:
                   cat $HOME/commonfile.env > $APP_SQUAD/${APP_NAMES}/base/base.env
                 fi          
                 cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
-                FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+                FILE_ENV=$(ls | grep ".env");cat $HOME/${K8S_ENV_NAME}-envfile.env > $FILE_ENV
                 kustomize edit set image app=${IMAGE_NAME}:${TAGS}
                 cat kustomization.yaml
                 git config --local user.email $GITHUB_EMAIL
