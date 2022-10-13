@@ -56,7 +56,7 @@ env:
 jobs:
   deploy_rollback:
     name: Update k8s-manifest repo
-    runs-on: self-hosted
+    runs-on: preemptible-runners
     permissions:
       contents: "read"
       id-token: "write"

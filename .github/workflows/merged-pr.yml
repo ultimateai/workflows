@@ -94,7 +94,7 @@ jobs:
   bump-release:
     name: Bump release
     if: github.event.pull_request.merged == true
-    runs-on: preemptible
+    runs-on: preemptible-runners
     permissions:
       contents: "read"
       id-token: "write"
@@ -135,7 +135,7 @@ jobs:
 
   push-and-deploy:
     name: Push image with updated tag and update development environment
-    runs-on: preemptible
+    runs-on: preemptible-runners
     needs: bump-release
     permissions:
       contents: "read"
