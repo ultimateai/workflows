@@ -307,7 +307,7 @@ jobs:
       
       - id: run_testim
         name: Run testim e2e test if deployment is true
-        # if: ${{ env.FINAL_STATUS == 'True'}}
+        if: ${{ env.FINAL_STATUS == 'True'}}
         continue-on-error: true
         run: |-
           npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project $TESTIM_PROJECT --grid $TESTIM_GRID --suite $TESTIM_SUITE $TESTIM_ADDITIONAL_FLAGS
