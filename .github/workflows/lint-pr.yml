@@ -40,7 +40,7 @@ env:
 jobs:
   main:
     name: Validate PR title
-    runs-on: self-hosted
+    runs-on: preemptible-runners
     steps:
       - uses: amannn/action-semantic-pull-request@v4
         env:

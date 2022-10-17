@@ -67,7 +67,7 @@ env:
 jobs:
   deploy:
     name: Update k8s-manifest repo
-    runs-on: self-hosted
+    runs-on: preemptible-runners
     permissions:
       contents: "read"
       id-token: "write"
@@ -78,7 +78,7 @@ jobs:
           ref: ${{ env.BRANCH_NAME }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
           
