@@ -187,7 +187,7 @@ jobs:
               cat "deployment_envs/stage.env" > $HOME/staging-envfile.env
             fi
             if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"development"* ]]; then
-              cat "deployment_envs/development.env" > $HOME/development-envfile.env
+              cat "deployment_envs/dev.env" > $HOME/development-envfile.env
             fi
             if [[ -f "deployment_envs/common.env" ]]; then
               cat "deployment_envs/common.env" > $HOME/commonfile.env
