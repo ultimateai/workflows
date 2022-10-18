@@ -257,7 +257,7 @@ jobs:
                     "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`
                   }
                 }
-              ]
+              ],
               "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}" 
             }
         env:
