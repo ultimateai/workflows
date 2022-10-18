@@ -249,16 +249,16 @@ jobs:
           payload: |-
             {
               "text": "Manual deployment",
+              "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}" 
               "blocks": [
                 {
-                  "type":"section",
+                  "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`"
                   }
                 }
-              ],
-              "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}" 
+              ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
