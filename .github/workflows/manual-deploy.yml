@@ -250,9 +250,9 @@ jobs:
           CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
       
       - name: Run tests
-        run: |
+        run: |-
           echo "outpus jope"
-          echo ${{ steps.slack_nofif.outputs.* }}
+          echo ${{join(steps.slack_nofif.outputs.*, '\n')}}
           echo "Individualmente"
           echo ${{ steps.slack_nofif.outputs.ts }}
           echo ${{ steps.slack_nofif.outputs.thread_ts }}
