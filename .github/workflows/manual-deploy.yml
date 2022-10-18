@@ -252,12 +252,13 @@ jobs:
               // Actually this is parent message's message.ts but the following steps use it as thread_ts
               "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}" 
             }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
       
       - name: Run tests
         run: |-
           echo "Slack message outputs"
           echo "Ts --> " ${{ steps.slack_notif.outputs.ts }}
-          echo "thread_ts --> " ${{ steps.slack_notif.outputs.['thread_ts'] }}
           echo "time --> ${{ steps.slack_notif.outputs.time }}"
         id: run_tests
 
