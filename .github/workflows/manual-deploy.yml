@@ -242,14 +242,13 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
 
-      - uses: slackapi/slack-github-action@v1.x
+      - uses: slackapi/slack-github-action@v1.23.0
         id: slack2
         with:
           channel-id: '#plt-239'
-          payload: |
+          payload: |-
             {
               "text": "The first reply",
-              // Actually this is parent message's message.ts but the following steps use it as thread_ts
               "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}" 
             }
         env:
