@@ -254,7 +254,7 @@ jobs:
           echo "Slack message outputs"
           echo "Ts --> " ${{ steps.slack_nofif.outputs.ts }}
           echo "thread_ts --> " ${{ steps.slack_nofif.outputs.thread_ts }}
-          echo "time --> " ${{ steps.slack_nofif.outputs.time }}
+          echo "time --> ${{ steps.slack_nofif.outputs.time }}"
         id: run_tests
 
       - name: Slack Notification for deployment
