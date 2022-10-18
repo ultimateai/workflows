@@ -248,13 +248,25 @@ jobs:
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
           RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
           CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
+      
+      - name: Run tests
+        run: |
+          echo "outpus jope"
+          echo ${{join(steps.slack_nofif.outputs.*, '\n')}}
+          echo "Individualmente"
+          echo ${{ steps.slack_nofif.outputs.ts }}
+          echo ${{ steps.slack_nofif.outputs.thread_ts }}
+          echo ${{ steps.slack_nofif.outputs.time }}
+        id: run_tests
+
+       
 
       - name: Slack Notification for deployment
         id: slack_thread_nofif
         if: ${{ env.TAGS == env.LATEST_TAG }}
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload: "{\"text\":\"Manual deployment\",\"thread_ts\":\"${{ steps.slack_nofif.outputs.ts }}\",\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`\"}}]}"
+          payload: "{\"text\":\"Manual deployment\",\"thread_ts\":\"${{ steps.slack_nofif.outputs.time }}\",\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`\"}}]}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
