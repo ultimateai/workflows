@@ -248,11 +248,26 @@ jobs:
           channel-id: '#plt-239'
           payload: |-
             {
-              "text": "The first reply",
+              "text": "Manual deployment",
+              "blocks": [
+                {
+                  "type":"section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`
+                  }
+                }
+              ]
               "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}" 
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
+          CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
       
       - name: Run tests
         run: |-
