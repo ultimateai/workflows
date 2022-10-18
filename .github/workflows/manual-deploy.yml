@@ -234,27 +234,20 @@ jobs:
       #     APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
       - name: Slack Notification for deployment
-        id: slack_nofif
-        if: ${{ env.TAGS == env.LATEST_TAG }}
+        id: slack_notif
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`\"}}]}"
+          channel-id: "plt-239"
+          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of X to Y by Z , V1 to V2\"}}]}"
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
-          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
-          CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
       
       - name: Run tests
         run: |-
           echo "Slack message outputs"
-          echo "Ts --> " ${{ steps.slack_nofif.outputs.ts }}
-          echo "thread_ts --> " ${{ steps.slack_nofif.outputs.thread_ts }}
-          echo "time --> ${{ steps.slack_nofif.outputs.time }}"
+          echo "Ts --> " ${{ steps.slack_notif.outputs.ts }}
+          echo "thread_ts --> " ${{ steps.slack_notif.outputs.thread_ts }}
+          echo "time --> ${{ steps.slack_notif.outputs.time }}"
         id: run_tests
 
       - name: Slack Notification for deployment
