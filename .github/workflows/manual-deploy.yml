@@ -249,7 +249,7 @@ jobs:
           payload: |-
             {
               "text": "Manual deployment",
-              "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}" 
+              "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}",
               "blocks": [
                 {
                   "type": "section",
