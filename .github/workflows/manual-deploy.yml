@@ -237,7 +237,7 @@ jobs:
         id: slack_notif
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          channel-id: "plt-239"
+          channel-id: "#plt-239"
           payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of X to Y by Z , V1 to V2\"}}]}"
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
