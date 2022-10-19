@@ -109,8 +109,7 @@ jobs:
         name: "Get repo name and update IMAGE_NAME"
         run: |- 
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
-          echo $IMAGE_NAME
-          echo '::set-output name=image_name::'$IMAGE_NAME
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
       
       - id: "app_names"
         name: "Get app_names if necessary"
@@ -118,8 +117,7 @@ jobs:
           if [[ -z "${APP_NAMES}" ]]; then
             APP_NAMES=${{ github.event.repository.name }}
           fi
-          echo $APP_NAMES
-          echo '::set-output name=app_names::'$APP_NAMES
+          echo "app_names=$APP_NAMES" >> $GITHUB_OUTPUT
           
       - name: Get environment.env file for updating k8s-manifest repo
         run: |-
@@ -160,14 +158,13 @@ jobs:
         name: Calculate version to deploy
         run: |-
           TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
-          echo '::set-output name=tag::'$TAG
+          echo "tag=$TAG" >> $GITHUB_OUTPUT          
 
       - id: get_changelog_content
         name: Get last changelog lines for slack notif
         run: |-
           CHANGELOG_LINES=$(head -4 CHANGELOG.md)
-          echo $CHANGELOG_LINES
-          echo '::set-output name=changelog_lines::'$CHANGELOG_LINES
+          echo "changelog_lines=$CHANGELOG_LINES" >> $GITHUB_OUTPUT 
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
@@ -191,7 +188,7 @@ jobs:
         id: get_old_version
         run: |-
           OLD_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
-          echo '::set-output name=old_version::'$OLD_VERSION
+          echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT 
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           
@@ -233,17 +230,34 @@ jobs:
       #     IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
       #     APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
-      - name: Slack Notification for deployment
+      - uses: slackapi/slack-github-action@v1.23.0
         id: slack_notif
-        uses: slackapi/slack-github-action@v1.23.0
         with:
-          channel-id: "#plt-239"
-          slack-message: "Lalalalalala"
+          channel-id: '#plt-239'
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}`"
+                  }
+                }
+              ]
+            }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
+          CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
 
       - uses: slackapi/slack-github-action@v1.23.0
-        id: slack2
+        id: slack_changelog
         with:
           channel-id: '#plt-239'
           payload: |-
@@ -255,7 +269,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}` "
+                    "text": "Changelog -> `${{ env.CHANGELOG_LINES}}` "
                   }
                 }
               ]
@@ -275,22 +289,6 @@ jobs:
           echo "Ts --> " ${{ steps.slack_notif.outputs.ts }}
           echo "time --> ${{ steps.slack_notif.outputs.time }}"
         id: run_tests
-
-      - name: Slack Notification for deployment
-        id: slack_thread_nofif
-        if: ${{ env.TAGS == env.LATEST_TAG }}
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          payload: "{\"text\":\"Manual deployment\",\"thread_ts\": ${{ steps.slack_notif.outputs.thread_ts }} ,\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`\"}}]}"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
-          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
-          CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
       
       - name: Gather relevant data for e2e testim tests
         id: gather_data
