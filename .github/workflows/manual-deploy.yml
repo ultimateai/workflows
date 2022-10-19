@@ -159,14 +159,15 @@ jobs:
         name: Calculate version to deploy
         run: |-
           TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
-          echo "tag=$TAG" >> $GITHUB_OUTPUT          
+          echo "tag=$TAG" >> $GITHUB_OUTPUT  
 
+
+# echo "changelog_lines=$CHANGELOG_LINES" >> $GITHUB_ENV
       - id: get_changelog_content
         name: Get last changelog lines for slack notif
         run: |-
           CHANGELOG_LINES=$(head -4 CHANGELOG.md)
           echo '::set-output name=changelog_lines::'$CHANGELOG_LINES
-          echo "changelog_lines=$CHANGELOG_LINES" >> $GITHUB_ENV
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
