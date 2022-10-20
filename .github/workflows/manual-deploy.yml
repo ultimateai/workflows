@@ -65,6 +65,11 @@ on:
           required: false
           type: string
           description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
+        slack_channel_id:
+          required: false
+          type: string
+          default: "#plt-239"
+          description: "Slack channel ID where you want your notifications"
 
         
         
@@ -86,6 +91,7 @@ env:
   TESTIM_ADDITIONAL_FLAGS: ${{ inputs.testim_additional_flags }}
   MAX_STATUS_TRIES: ${{ inputs.max_status_tries }}
   APP_NAMES: ${{ inputs.app_names }}
+  SLACK_CHANNEL_ID: ${{ inputs.slack_channel_id }}
 
 
 jobs:
@@ -238,7 +244,7 @@ jobs:
         id: slack_notif
         if: ${{ (env.ENVIRONMENT == 'production') || ((env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true')) }} 
         with:
-          channel-id: '#plt-239'
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
           payload: |-
             {
               "text": "Manual deployment",
@@ -266,7 +272,7 @@ jobs:
         if: ${{ (env.ENVIRONMENT == 'production') || ((env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true')) }} 
         id: slack_changelog
         with:
-          channel-id: '#plt-239'
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
           payload: |-
             {
               "text": "Manual deployment",
@@ -361,7 +367,7 @@ jobs:
         # if: steps.run_testim.outcome == 'failure'
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          channel-id: '#plt-239'
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
           payload: |-
             {
               "text": "Testim failed",
@@ -391,7 +397,7 @@ jobs:
         # if: steps.run_testim.outcome == 'success'
         uses: slackapi/slack-github-action@v1.23.0
         with:
-          channel-id: '#plt-239'
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
           payload: |-
             {
               "text": "Testim succeded",
