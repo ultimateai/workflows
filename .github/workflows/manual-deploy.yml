@@ -95,8 +95,8 @@ jobs:
     outputs: 
       namespace: ${{ steps.gather_data.outputs.namespace }}
       deployment_name: ${{ steps.gather_data.outputs.deployment_name }}
-      environment: ${{ env.ENVIRONMENT}}
-      run_e2e_tests: ${{ env.RUN_E2E_TESTS}}
+      environment: ${{ env.ENVIRONMENT }}
+      run_e2e_tests: ${{ env.RUN_E2E_TESTS }}
       thread_ts: ${{ steps.slack_notif.outputs.thread_ts }}
     permissions:
       contents: "read"
@@ -235,6 +235,7 @@ jobs:
 
       - uses: slackapi/slack-github-action@v1.23.0
         id: slack_notif
+        if: ${{ (env.ENVIRONMENT == 'production') OR ((env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true')) }} 
         with:
           channel-id: '#plt-239'
           payload: |-
@@ -260,6 +261,7 @@ jobs:
           CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
 
       - uses: slackapi/slack-github-action@v1.23.0
+        if: ${{ (env.ENVIRONMENT == 'production') || ((env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true')) }} 
         id: slack_changelog
         with:
           channel-id: '#plt-239'
@@ -345,7 +347,7 @@ jobs:
       
       # - id: run_testim
       #   name: Run testim e2e test if deployment is true
-      #   if: ${{ env.FINAL_STATUS == 'True'}}
+      #   # if: ${{ env.FINAL_STATUS == 'True'}}
       #   continue-on-error: true
       #   run: |-
       #     npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project $TESTIM_PROJECT --grid $TESTIM_GRID --suite $TESTIM_SUITE $TESTIM_ADDITIONAL_FLAGS
@@ -367,7 +369,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites "
+                    "text": ":x: Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites "
                   }
                 }
               ]
@@ -375,9 +377,16 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
 
+      # - name: Fail workflow if testim fails
+      #   id: fail_wf_testim
+      #   if: steps.run_testim.outcome == 'failure'
+      #   run: |-
+      #     echo "Testim failed! Please check ${{ env.TESTIM_SUITE }} suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites"
+      #     exit 1
+
       - name: Slack Notification for testim failure
         id: slack_testim_notif_success
-        # if: steps.run_testim.outcome == 'failure'
+        # if: steps.run_testim.outcome == 'success'
         uses: slackapi/slack-github-action@v1.23.0
         with:
           channel-id: '#plt-239'
@@ -390,19 +399,10 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Testim succeded! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites for more details "
+                    "text": ":heavy_check_mark: Testim succeded! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites for more details "
                   }
                 }
               ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
-
-
-
-      # - name: Fail workflow if testim fails
-      #   id: fail_wf_testim
-      #   if: steps.run_testim.outcome == 'failure'
-      #   run: |-
-      #     echo "Testim failed! Please check ${{ env.TESTIM_SUITE }} suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites"
-      #     exit 1
