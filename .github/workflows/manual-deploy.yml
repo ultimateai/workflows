@@ -399,7 +399,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":heavy_check_mark: Testim succeded! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites for more details "
+                    "text": ":white_check_mark: Testim succeded! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites for more details "
                   }
                 }
               ]
