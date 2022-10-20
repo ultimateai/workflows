@@ -282,7 +282,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Changelog\n ${{ (echo env.CHANGELOG_LINES | sed 's/- /\'$'\n- /g') "
+                    "text": "Changelog\n ${{ (echo env.CHANGELOG_LINES | sed 's/- /\'$'\n- /g') }} "
                   }
                 }
               ]
