@@ -234,6 +234,7 @@ jobs:
       #     APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
       - uses: slackapi/slack-github-action@v1.23.0
+        name: Slack notification
         id: slack_notif
         if: ${{ (env.ENVIRONMENT == 'production') || ((env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true')) }} 
         with:
@@ -261,6 +262,7 @@ jobs:
           CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
 
       - uses: slackapi/slack-github-action@v1.23.0
+        name: Threaded slack notification for changelog
         if: ${{ (env.ENVIRONMENT == 'production') || ((env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true')) }} 
         id: slack_changelog
         with:
@@ -274,7 +276,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Changelog -> `${{ env.CHANGELOG_LINES}}` "
+                    "text": "Changelog\n ${{ env.CHANGELOG_LINES}} "
                   }
                 }
               ]
