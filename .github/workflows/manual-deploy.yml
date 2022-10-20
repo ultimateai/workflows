@@ -172,8 +172,7 @@ jobs:
       - id: get_changelog_content
         name: Get last changelog lines for slack notif
         run: |-
-          CHANGELOG_LINES=$(head -4 CHANGELOG.md)
-          echo '::set-output name=changelog_lines::'$(cat CHANGELOG.md)
+          echo '::set-output name=changelog_lines::'$(head -4 CHANGELOG.md)
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
