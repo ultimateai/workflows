@@ -65,6 +65,11 @@ on:
           required: false
           type: string
           description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
+        slack_channel_id:
+          required: false
+          type: string
+          default: "#plt-239"
+          description: "Slack channel ID where you want your notifications"
 
         
         
@@ -86,6 +91,7 @@ env:
   TESTIM_ADDITIONAL_FLAGS: ${{ inputs.testim_additional_flags }}
   MAX_STATUS_TRIES: ${{ inputs.max_status_tries }}
   APP_NAMES: ${{ inputs.app_names }}
+  SLACK_CHANNEL_ID: ${{ inputs.slack_channel_id }}
 
 
 jobs:
@@ -95,8 +101,9 @@ jobs:
     outputs: 
       namespace: ${{ steps.gather_data.outputs.namespace }}
       deployment_name: ${{ steps.gather_data.outputs.deployment_name }}
-      environment: ${{ env.ENVIRONMENT}}
-      run_e2e_tests: ${{ env.RUN_E2E_TESTS}}
+      environment: ${{ env.ENVIRONMENT }}
+      run_e2e_tests: ${{ env.RUN_E2E_TESTS }}
+      thread_ts: ${{ steps.slack_notif.outputs.thread_ts }}
     permissions:
       contents: "read"
       id-token: "write"
@@ -109,8 +116,7 @@ jobs:
         name: "Get repo name and update IMAGE_NAME"
         run: |- 
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
-          echo $IMAGE_NAME
-          echo '::set-output name=image_name::'$IMAGE_NAME
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
       
       - id: "app_names"
         name: "Get app_names if necessary"
@@ -118,8 +124,7 @@ jobs:
           if [[ -z "${APP_NAMES}" ]]; then
             APP_NAMES=${{ github.event.repository.name }}
           fi
-          echo $APP_NAMES
-          echo '::set-output name=app_names::'$APP_NAMES
+          echo "app_names=$APP_NAMES" >> $GITHUB_OUTPUT
           
       - name: Get environment.env file for updating k8s-manifest repo
         run: |-
@@ -160,14 +165,7 @@ jobs:
         name: Calculate version to deploy
         run: |-
           TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
-          echo '::set-output name=tag::'$TAG
-
-      - id: get_changelog_content
-        name: Get last changelog lines for slack notif
-        run: |-
-          CHANGELOG_LINES=$(head -4 CHANGELOG.md)
-          echo $CHANGELOG_LINES
-          echo '::set-output name=changelog_lines::'$CHANGELOG_LINES
+          echo "tag=$TAG" >> $GITHUB_OUTPUT  
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
@@ -191,7 +189,7 @@ jobs:
         id: get_old_version
         run: |-
           OLD_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
-          echo '::set-output name=old_version::'$OLD_VERSION
+          echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT 
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           
@@ -233,30 +231,67 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
-      - name: Slack Notification for deployment
+      - uses: slackapi/slack-github-action@v1.23.0
+        name: Slack notification
         id: slack_notif
-        if: ${{ env.TAGS == env.LATEST_TAG }}
-        uses: slackapi/slack-github-action@v1.19.0
+        if: ${{ (env.ENVIRONMENT == 'production') || ((env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true')) }} 
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n Changelog -> `${{ env.CHANGELOG_LINES}}`\"}}]}"
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}`"
+                  }
+                }
+              ]
+            }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
-          CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
+
+      - uses: slackapi/slack-github-action@v1.23.0
+        name: Threaded slack notification for version comparison
+        if: ${{ (env.ENVIRONMENT == 'production') || ((env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true')) }} 
+        id: slack_threaded_version
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Version comparison:\n https://github.com/${{ github.event.repository.full_name }}/compare/${{ env.OLD_VERSION }}...${{ env.TAGS }} "
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+      
       
       - name: Gather relevant data for e2e testim tests
         id: gather_data
-        if: ${{ (env.ENVIRONMENT == 'staging') && (1==1) }} 
+        if: ${{ (env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true') }} 
         run: |-
           NAMESPACE=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .namespace)
           DEPLOYMENT_NAME=$(echo $(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .namePrefix)deployment)
-          echo '::set-output name=namespace::'$NAMESPACE
-          echo '::set-output name=deployment_name::'$DEPLOYMENT_NAME
+          echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
+          echo "deployment_name=$DEPLOYMENT_NAME" >> $GITHUB_OUTPUT
 
   run-e2e-test:
     needs: deploy
@@ -300,14 +335,14 @@ jobs:
           NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME -lt $MAX_STATUS_TRIES ]];do echo $NEXT_WAIT_TIME;sleep $(( NEXT_WAIT_TIME++ ));done;
           FINAL_STATUS=$(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")
           echo "Status of deployment is $FINAL_STATUS"
-          echo '::set-output name=final_status::'$FINAL_STATUS
+          echo "final_status=$FINAL_STATUS" >> $GITHUB_OUTPUT  
         env:
           NAMESPACE: ${{needs.deploy.outputs.namespace}}
           DEPLOYMENT_NAME: ${{needs.deploy.outputs.deployment_name}}
       
       - id: run_testim
         name: Run testim e2e test if deployment is true
-        if: ${{ env.FINAL_STATUS == 'True'}}
+        # if: ${{ env.FINAL_STATUS == 'True'}}
         continue-on-error: true
         run: |-
           npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project $TESTIM_PROJECT --grid $TESTIM_GRID --suite $TESTIM_SUITE $TESTIM_ADDITIONAL_FLAGS
@@ -315,14 +350,27 @@ jobs:
           FINAL_STATUS: ${{ steps.check_status.outputs.final_status }}
 
       - name: Slack Notification for testim failure
-        id: slack_testim_notif
+        id: slack_testim_notif_failure
         if: steps.run_testim.outcome == 'failure'
-        uses: slackapi/slack-github-action@v1.19.0
+        uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload: "{\"text\":\"Testim result\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites\"}}]}"
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Testim failed",
+              "thread_ts": "${{ needs.deploy.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":x: Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites "
+                  }
+                }
+              ]
+            }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
 
       - name: Fail workflow if testim fails
         id: fail_wf_testim
@@ -330,13 +378,26 @@ jobs:
         run: |-
           echo "Testim failed! Please check ${{ env.TESTIM_SUITE }} suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites"
           exit 1
-      
+
       - name: Slack Notification for testim success
         id: slack_testim_notif_success
         if: steps.run_testim.outcome == 'success'
-        uses: slackapi/slack-github-action@v1.19.0
+        uses: slackapi/slack-github-action@v1.23.0
         with:
-          payload: "{\"text\":\"Testim result\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Testim succeded! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites for more details\"}}]}"
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Testim succeded",
+              "thread_ts": "${{ needs.deploy.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":white_check_mark: Testim succeded! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites for more details "
+                  }
+                }
+              ]
+            }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}

@@ -39,6 +39,11 @@ on:
           required: false
           type: string
           description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
+        slack_channel_id:
+          required: false
+          type: string
+          default: "#plt-239"
+          description: "Slack channel ID where you want your notifications"
 
 
 env:
@@ -51,6 +56,7 @@ env:
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
   ALLOWED_USERS: ${{ inputs.allowed_users }}
   APP_NAMES: ${{ inputs.app_names }}
+  SLACK_CHANNEL_ID: ${{ inputs.slack_channel_id }}
 
 
 jobs:
@@ -114,13 +120,6 @@ jobs:
       #     fi
       #     echo '::set-output name=tag::'$TAG
 
-      - id: get_changelog_content
-        name: Get last changelog lines for slack notif
-        run: |-
-          CHANGELOG_LINES=$(head -4 CHANGELOG.md)
-          echo $CHANGELOG_LINES
-          echo '::set-output name=changelog_lines::'$CHANGELOG_LINES
-
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
         with:
@@ -178,20 +177,57 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
-      - name: Slack Notification for rollback
+      - uses: slackapi/slack-github-action@v1.23.0
+        name: Slack notification
         id: slack_notif_rollback
-        if: ${{ env.TAGS != env.LATEST_TAG }}
-        uses: slackapi/slack-github-action@v1.19.0
+        if: ${{ env.TAGS != env.LATEST_TAG }} 
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n *WARNING!!* This is a rollback! Please add any information under this thread. \"}}]}"
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual rollback",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \n *WARNING!!* This is a rollback! Please add any information under this thread. "
+                  }
+                }
+              ]
+            }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
+
+      - uses: slackapi/slack-github-action@v1.23.0
+        name: Threaded slack notification for version comparison
+        if: ${{ env.TAGS != env.LATEST_TAG }} 
+        id: slack_threaded_version
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "thread_ts": "${{ steps.slack_notif_rollback.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Version comparison:\n https://github.com/${{ github.event.repository.full_name }}/compare/${{ env.TAGS }}...${{ env.OLD_VERSION }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
 
 
                   

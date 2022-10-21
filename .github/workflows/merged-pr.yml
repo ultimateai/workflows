@@ -106,7 +106,7 @@ jobs:
 
       - name: Bump version and release
         id: bump_version
-        uses: ultimateai/bump-action@v0.5.7
+        uses: ultimateai/bump-action@v0.5.8
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
@@ -154,8 +154,7 @@ jobs:
         name: "Get repo name and update IMAGE_NAME"
         run: |- 
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
-          echo $IMAGE_NAME
-          echo '::set-output name=image_name::'$IMAGE_NAME
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
       
       - id: "app_names"
         name: "Get app_names if necessary"
@@ -163,8 +162,7 @@ jobs:
           if [[ -z "${APP_NAMES}" ]]; then
             APP_NAMES=${{ github.event.repository.name }}
           fi
-          echo $APP_NAMES
-          echo '::set-output name=app_names::'$APP_NAMES
+          echo "app_names=$APP_NAMES" >> $GITHUB_OUTPUT
 
       - name: Get environment.env file for updating k8s-manifest repo
         run: |-
@@ -221,7 +219,7 @@ jobs:
           service_account: ${{ secrets.GSA_GCR_EMAIL }}
 
       - name: "Authenticating docker to push to gcr"
-        uses: "docker/login-action@v1"
+        uses: docker/login-action@v2.1.0
         with:
           registry: "eu.gcr.io"
           username: "oauth2accesstoken"
