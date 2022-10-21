@@ -167,13 +167,6 @@ jobs:
           TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
           echo "tag=$TAG" >> $GITHUB_OUTPUT  
 
-
-# echo "changelog_lines=$CHANGELOG_LINES" >> $GITHUB_ENV
-      - id: get_changelog_content
-        name: Get last changelog lines for slack notif
-        run: |-
-          echo '::set-output name=changelog_lines::'$(head -4 CHANGELOG.md)
-
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
         with:
@@ -263,8 +256,6 @@ jobs:
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
-          CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
 
       - uses: slackapi/slack-github-action@v1.23.0
         name: Threaded slack notification for changelog
@@ -281,7 +272,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Changelog\n ${{ env.CHANGELOG_LINES }} "
+                    "text": "Version comparison:\n https://github.com/${{ env.GITHUB_REPOSITORY }}/compare/${{ env.OLD_VERSION }}...${{ env.TAGS }} "
                   }
                 }
               ]
@@ -290,10 +281,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
-          CHANGELOG_LINES: ${{ steps.get_changelog_content.outputs.changelog_lines }}
       
       
       - name: Gather relevant data for e2e testim tests
