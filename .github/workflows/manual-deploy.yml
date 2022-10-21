@@ -258,9 +258,9 @@ jobs:
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
 
       - uses: slackapi/slack-github-action@v1.23.0
-        name: Threaded slack notification for changelog
+        name: Threaded slack notification for version comparison
         if: ${{ (env.ENVIRONMENT == 'production') || ((env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true')) }} 
-        id: slack_changelog
+        id: slack_threaded_version
         with:
           channel-id: ${{ env.SLACK_CHANNEL_ID }}
           payload: |-

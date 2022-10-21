@@ -120,13 +120,6 @@ jobs:
       #     fi
       #     echo '::set-output name=tag::'$TAG
 
-      - id: get_changelog_content
-        name: Get last changelog lines for slack notif
-        run: |-
-          CHANGELOG_LINES=$(head -4 CHANGELOG.md)
-          echo $CHANGELOG_LINES
-          echo '::set-output name=changelog_lines::'$CHANGELOG_LINES
-
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
         with:
@@ -208,6 +201,32 @@ jobs:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+
+      - uses: slackapi/slack-github-action@v1.23.0
+        name: Threaded slack notification for version comparison
+        if: ${{ env.TAGS != env.LATEST_TAG }} 
+        id: slack_threaded_version
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "thread_ts": "${{ steps.slack_notif_rollback.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Version comparison:\n https://github.com/${{ github.event.repository.full_name }}/compare/${{ env.OLD_VERSION }}...${{ env.TAGS }} "
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
 
 
