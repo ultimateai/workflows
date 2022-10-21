@@ -372,12 +372,12 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
 
-      - name: Fail workflow if testim fails
-        id: fail_wf_testim
-        # if: steps.run_testim.outcome == 'failure'
-        run: |-
-          echo "Testim failed! Please check ${{ env.TESTIM_SUITE }} suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites"
-          exit 1
+      # - name: Fail workflow if testim fails
+      #   id: fail_wf_testim
+      #   if: steps.run_testim.outcome == 'failure'
+      #   run: |-
+      #     echo "Testim failed! Please check ${{ env.TESTIM_SUITE }} suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites"
+      #     exit 1
 
       - name: Slack Notification for testim success
         id: slack_testim_notif_success
