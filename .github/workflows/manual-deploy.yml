@@ -272,7 +272,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Version comparison:\n https://github.com/${{ env.GITHUB_REPOSITORY }}/compare/${{ env.OLD_VERSION }}...${{ env.TAGS }} "
+                    "text": "Version comparison:\n https://github.com/${{ github.event.repository }}/compare/${{ env.OLD_VERSION }}...${{ env.TAGS }} "
                   }
                 }
               ]
