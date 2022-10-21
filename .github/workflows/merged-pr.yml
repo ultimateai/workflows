@@ -154,8 +154,7 @@ jobs:
         name: "Get repo name and update IMAGE_NAME"
         run: |- 
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
-          echo $IMAGE_NAME
-          echo '::set-output name=image_name::'$IMAGE_NAME
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
       
       - id: "app_names"
         name: "Get app_names if necessary"
@@ -163,8 +162,7 @@ jobs:
           if [[ -z "${APP_NAMES}" ]]; then
             APP_NAMES=${{ github.event.repository.name }}
           fi
-          echo $APP_NAMES
-          echo '::set-output name=app_names::'$APP_NAMES
+          echo "app_names=$APP_NAMES" >> $GITHUB_OUTPUT
 
       - name: Get environment.env file for updating k8s-manifest repo
         run: |-
