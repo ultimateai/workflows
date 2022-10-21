@@ -178,20 +178,31 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
-      - name: Slack Notification for rollback
+      - uses: slackapi/slack-github-action@v1.23.0
+        name: Slack notification
         id: slack_notif_rollback
-        if: ${{ env.TAGS != env.LATEST_TAG }}
-        uses: slackapi/slack-github-action@v1.19.0
+        if: ${{ env.TAGS != env.LATEST_TAG }} 
         with:
-          payload: "{\"text\":\"Manual deployment\", \"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n *WARNING!!* This is a rollback! Please add any information under this thread. \"}}]}"
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual rollback",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n *WARNING!!* This is a rollback! Please add any information under this thread. "
+                  }
+                }
+              ]
+            }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-          RELEASE_TITLE: ${{ steps.fetch_latest_release.outputs.name }}
 
 
                   

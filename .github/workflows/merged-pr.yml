@@ -106,7 +106,7 @@ jobs:
 
       - name: Bump version and release
         id: bump_version
-        uses: ultimateai/bump-action@v0.5.7
+        uses: ultimateai/bump-action@v0.5.8
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
           infer_bump_from_commit: true
@@ -219,7 +219,7 @@ jobs:
           service_account: ${{ secrets.GSA_GCR_EMAIL }}
 
       - name: "Authenticating docker to push to gcr"
-        uses: "docker/login-action@v1"
+        uses: docker/login-action@v2.1.0
         with:
           registry: "eu.gcr.io"
           username: "oauth2accesstoken"
