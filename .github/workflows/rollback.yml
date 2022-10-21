@@ -191,7 +191,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \\n *WARNING!!* This is a rollback! Please add any information under this thread. "
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \n *WARNING!!* This is a rollback! Please add any information under this thread. "
                   }
                 }
               ]
@@ -218,7 +218,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Version comparison:\n https://github.com/${{ github.event.repository.full_name }}/compare/${{ env.OLD_VERSION }}...${{ env.TAGS }} "
+                    "text": "Version comparison:\n https://github.com/${{ github.event.repository.full_name }}/compare/${{ env.TAGS }}...${{ env.OLD_VERSION }}"
                   }
                 }
               ]
