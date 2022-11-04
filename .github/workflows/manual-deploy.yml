@@ -167,12 +167,16 @@ jobs:
           TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
           echo "tag=$TAG" >> $GITHUB_OUTPUT
       
+      - name: Changelog content debug4
+        run: |
+          cat CHANGELOG.md
+      
       - name: Changelog content
         id: full_changelog_content
         run: |
-          echo 'FILE_CONTENT_CHANGELOG<<EOF' >> $GITHUB_ENV
-          head -40 CHANGELOG.md >> $GITHUB_ENV
-          echo 'EOF' >> $GITHUB_ENV
+          echo 'FILE_CONTENT_CHANGELOG<<FEND' >> $GITHUB_ENV
+          head -50 CHANGELOG.md >> $GITHUB_ENV
+          echo 'FEND' >> $GITHUB_ENV
 
       - name: Changelog content debug2
         run: |
