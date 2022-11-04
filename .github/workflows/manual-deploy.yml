@@ -167,20 +167,12 @@ jobs:
           TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
           echo "tag=$TAG" >> $GITHUB_OUTPUT
       
-      - name: Changelog content debug4
-        run: |
-          cat CHANGELOG.md
-      
       - name: Changelog content
         id: full_changelog_content
         run: |
           echo 'FILE_CONTENT_CHANGELOG<<FEND' >> $GITHUB_ENV
           head -50 CHANGELOG.md >> $GITHUB_ENV
           echo 'FEND' >> $GITHUB_ENV
-
-      - name: Changelog content debug2
-        run: |
-          echo "${{ env.FILE_CONTENT_CHANGELOG }}"
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
@@ -217,9 +209,9 @@ jobs:
         env:
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
 
-      - name: Changelog content debug
+      - name: Changelog content debug2
         run: |
-          echo ${{ env.FILTERED_CHANGELOG_CONTENT }}
+          echo "${{ env.FILTERED_CHANGELOG_CONTENT }}"
           
       - name: Update the Image tags and env files for Selected Environment
         run: |-
@@ -300,7 +292,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ env.FILTERED_CHANGELOG_CONTENT }}"
+                    "text": "Changelog: \n `${{ env.FILTERED_CHANGELOG_CONTENT }}` "
                   }
                 }
               ]
