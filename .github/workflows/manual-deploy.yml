@@ -206,7 +206,8 @@ jobs:
           echo 'FILTERED_CHANGELOG_CONTENT<<EOF' >> $GITHUB_ENV
           echo  ${{ env.FILE_CONTENT_CHANGELOG }} | sed '/\.\.\.${{ env.OLD_VERSION }}/q'  >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
-        OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+        env:
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
 
       - name: Changelog content debug
         run: |
