@@ -211,7 +211,10 @@ jobs:
 
       - name: Changelog content debug
         run: |
+          echo "soy una taza"
           echo ${{ env.FILTERED_CHANGELOG_CONTENT }}
+          echo "una cuchara"
+          
         
       - name: Update the Image tags and env files for Selected Environment
         run: |-
