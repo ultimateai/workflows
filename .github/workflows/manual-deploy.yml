@@ -204,7 +204,7 @@ jobs:
         id: filter_changelog
         run: |
           echo 'FILTERED_CHANGELOG_CONTENT<<EFO' >> $GITHUB_ENV
-          echo "${{ env.FILE_CONTENT_CHANGELOG }}" | sed '/\.\.\.${{ env.OLD_VERSION }}/q' | awk '{printf "%s\\n", $0}' >> $GITHUB_ENV
+          echo "${{ env.FILE_CONTENT_CHANGELOG }}" | sed '/\.\.\.${{ env.OLD_VERSION }}/q' | sed 's/$/\\n/' | tr -d '\n' >> $GITHUB_ENV
           echo 'EFO' >> $GITHUB_ENV
         env:
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
