@@ -171,8 +171,15 @@ jobs:
         id: full_changelog_content
         run: |
           echo 'FILE_CONTENT_CHANGELOG<<EOF' >> $GITHUB_ENV
-          head -100 CHANGELOG.md >> $GITHUB_ENV
+          head -40 CHANGELOG.md >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
+
+      - name: Changelog content debug2
+        run: |
+          echo "soy una taza"
+          ${{ env.FILE_CONTENT_CHANGELOG }}
+          echo "una cuchara"
+      
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
@@ -207,8 +214,14 @@ jobs:
           echo "${{ env.FILE_CONTENT_CHANGELOG }}" | sed '/\.\.\.${{ env.OLD_VERSION }}/q' >> $GITHUB_ENV
           echo 'EFO' >> $GITHUB_ENV
         env:
-          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}  
-        
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+
+      - name: Changelog content debug
+        run: |
+          echo "soy una taza"
+          ${{ env.FILTERED_CHANGELOG_CONTENT }}
+          echo "una cuchara"
+          
       - name: Update the Image tags and env files for Selected Environment
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
