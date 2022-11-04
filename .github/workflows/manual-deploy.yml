@@ -292,14 +292,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Changelog: 
-                        Puedo enviar
-                        Este tipo
-                        De
-                        Mensajes
-                        En
-                        slack
-                        "
+                    "text": "Changelog:\nPuedo enviar\ncosas\nasi\nlala"
                   }
                 }
               ]
