@@ -207,14 +207,7 @@ jobs:
           echo "${{ env.FILE_CONTENT_CHANGELOG }}" | sed '/\.\.\.${{ env.OLD_VERSION }}/q' >> $GITHUB_ENV
           echo 'EFO' >> $GITHUB_ENV
         env:
-          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-
-      - name: Changelog content debug
-        run: |
-          echo "soy una taza"
-          echo ${{ env.FILTERED_CHANGELOG_CONTENT }}
-          echo "una cuchara"
-          
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}  
         
       - name: Update the Image tags and env files for Selected Environment
         run: |-
