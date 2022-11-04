@@ -176,10 +176,7 @@ jobs:
 
       - name: Changelog content debug2
         run: |
-          echo "soy una taza"
           ${{ env.FILE_CONTENT_CHANGELOG }}
-          echo "una cuchara"
-      
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
@@ -218,9 +215,7 @@ jobs:
 
       - name: Changelog content debug
         run: |
-          echo "soy una taza"
-          ${{ env.FILTERED_CHANGELOG_CONTENT }}
-          echo "una cuchara"
+          echo ${{ env.FILTERED_CHANGELOG_CONTENT }}
           
       - name: Update the Image tags and env files for Selected Environment
         run: |-
