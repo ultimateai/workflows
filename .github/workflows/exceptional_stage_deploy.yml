@@ -1,0 +1,229 @@
+name: Deploy branch to staging
+
+on:
+  workflow_call:
+    inputs:
+        image_repo:
+          required: true
+          type: string
+          description: "Your container registry repository - like eu.gcr.io/ultimateai-169214"
+        app_squad:
+          required: true
+          type: string
+          description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
+        github_email:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this email"
+        github_user:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this user"
+        k8s_manifests_repo:
+          required: true
+          type: string
+          description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+        branch_name:
+          required: true 
+          type: string
+          description: "Which branch you want to build and deploy to staging"
+        test_command:
+          required: false
+          type: string
+          description: "Command for running your tests, defaults to - npm run test"
+          default: "npm run test"
+        npm_install_command:
+          required: false
+          type: string
+          description: "Command for npm i, defaults to - npm i"
+          default: "npm i"
+        app_names:
+          required: false
+          type: string
+          description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
+        node_version:
+          required: false
+          type: string
+          default: "16.x"
+          description: "Node version used in the pipeline, defaults to 16.x"
+
+        
+        
+
+
+env:
+  IMAGE_REPO: ${{ inputs.image_repo }}
+  APP_SQUAD: ${{ inputs.app_squad }}
+  GITHUB_EMAIL: ${{ inputs.github_email }}
+  GITHUB_USER: ${{ inputs.github_user }}
+  K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
+  BRANCH_NAME: ${{ inputs.branch_name }}
+  TEST_COMMAND: ${{ inputs.test_command }}
+  APP_NAMES: ${{ inputs.app_names }}
+  NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
+  NODE_VERSION: ${{ inputs.node_version }}
+
+
+jobs:
+  deploy:
+    name: Update k8s-manifest repo
+    runs-on: preemptible-runners
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: Checkout to selected branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - id: "image_name"
+        name: "Get repo name and update IMAGE_NAME"
+        run: |- 
+          IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+      - id: "app_names"
+        name: "Get app_names if necessary"
+        run: |- 
+          if [[ -z "${APP_NAMES}" ]]; then
+            APP_NAMES=${{ github.event.repository.name }}
+          fi
+          echo "app_names=$APP_NAMES" >> $GITHUB_OUTPUT
+
+      - name: Get stage.env file
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                cat "deployment_envs/$app_name/stage.env" > $HOME/$app_name-stage-copy.env
+              done
+          else
+            cat "deployment_envs/stage.env" > $HOME/stage-copy.env
+          fi
+
+      - id: get_image_tag
+        name: Get image tag from branch name and commitId
+        run: |- 
+          FIXED_BRANCH_NAME=$(echo "$BRANCH_NAME" | tr / -)
+          TAG=$FIXED_BRANCH_NAME-$(git rev-parse --short HEAD)
+          echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Export Home
+        run: echo "HOME=/root" >> $GITHUB_ENV
+
+      ##  Needs to be added so as to pull common Libs from bitbucket ##
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.BB_SSH_KEY }}
+          name: id_rsa
+          known_hosts: bitbucket.org
+          if_key_exists: ignore
+
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-
+
+       ### Authentings with Google Cloud to Push Image to GCR ###
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v0"
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
+          service_account: ${{ secrets.GSA_GCR_EMAIL }}
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v0"
+
+      - name: Install npm Packages
+        run: |
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login
+          fi
+          $NPM_INSTALL_COMMAND
+
+      - name: Test
+        if: ${{ env.TEST_COMMAND }}
+        run: $TEST_COMMAND
+
+      - name: Lint
+        run: npm run lint
+
+      - name: build
+        run: npm run build
+
+      - name: "Authenticating docker to push to gcr"
+        uses: docker/login-action@v2.1.0
+        with:
+          registry: "eu.gcr.io"
+          username: "oauth2accesstoken"
+          password: "${{ steps.auth.outputs.access_token }}"
+
+      - name: Docker build
+        run: |-
+          echo "$SSH_KEY" > id_rsa
+          docker build -t "${IMAGE_NAME}:${TAGS}" .
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.BB_SSH_KEY }}
+          TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+
+      - name: Docker push
+        run: |-
+          docker push "${IMAGE_NAME}:${TAGS}"
+        shell: bash
+        env:
+          TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+
+      ##Deploy to stage
+      - name: "Checkout k8s manifests"
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.K8S_MANIFESTS_REPO }}
+          token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+          
+      - name: Update the Image tags for stage Environment
+        run: |-
+            if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                cd $APP_SQUAD/$app_name/overlay/${K8S_ENV_NAME}
+                cat $HOME/$app_name-stage-copy.env > stage.env
+                kustomize edit set image app=${IMAGE_NAME}:${TAG}
+                cat kustomization.yaml
+                git config --local user.email $GITHUB_EMAIL
+                git config --local user.name $GITHUB_USER
+                git commit -m "update $app_name image to ${IMAGE_NAME}:${TAG}" -a
+                git push ${REMOTE_REPO} HEAD:main --force
+                cd ../../../../
+              done 
+            else
+              cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
+              cat $HOME/stage-copy.env > stage.env
+              kustomize edit set image app=${IMAGE_NAME}:${TAG}
+              cat kustomization.yaml
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update image to ${IMAGE_NAME}:${TAG}" -a
+              git push ${REMOTE_REPO} HEAD:main --force 
+            fi
+        env:
+          TAG: ${{ steps.get_image_tag.outputs.image_tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          K8S_ENV_NAME: staging
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}

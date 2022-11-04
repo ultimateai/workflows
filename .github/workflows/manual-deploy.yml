@@ -165,7 +165,14 @@ jobs:
         name: Calculate version to deploy
         run: |-
           TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
-          echo "tag=$TAG" >> $GITHUB_OUTPUT  
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+      
+      - name: Changelog content
+        id: full_changelog_content
+        run: |
+          echo 'FILE_CONTENT_CHANGELOG<<EOF' >> $GITHUB_ENV
+          head -100 CHANGELOG.md >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
@@ -192,7 +199,19 @@ jobs:
           echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT 
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          
+
+      - name: Changelog content
+        id: filter_changelog
+        run: |
+          echo 'FILTERED_CHANGELOG_CONTENT<<EOF' >> $GITHUB_ENV
+          echo  ${{ env.FILE_CONTENT_CHANGELOG }} | sed '/\.\.\.${{ env.OLD_VERSION }}/q'  >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+        OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+
+      - name: Changelog content debug
+        run: |
+          echo ${{ env.FILTERED_CHANGELOG_CONTENT }}
+        
       - name: Update the Image tags and env files for Selected Environment
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
@@ -272,7 +291,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Version comparison:\n https://github.com/${{ github.event.repository.full_name }}/compare/${{ env.OLD_VERSION }}...${{ env.TAGS }} "
+                    "text": "${{ env.FILTERED_CHANGELOG_CONTENT }}"
                   }
                 }
               ]
