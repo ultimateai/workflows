@@ -293,7 +293,12 @@ jobs:
                   "text": {
                     "type": "mrkdwn",
                     "text": "Changelog: 
-                        ${{ env.FILTERED_CHANGELOG_CONTENT }}
+                        Puedo enviar
+                        Este tipo
+                        De
+                        Mensajes
+                        En
+                        slack
                         "
                   }
                 }
