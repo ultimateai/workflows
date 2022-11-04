@@ -292,7 +292,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Changelog: ${{ env.FILTERED_CHANGELOG_CONTENT }}" "
+                    "text": "Changelog: ${{ env.FILTERED_CHANGELOG_CONTENT }} "
                   }
                 }
               ]
