@@ -176,7 +176,7 @@ jobs:
 
       - name: Changelog content debug2
         run: |
-          ${{ env.FILE_CONTENT_CHANGELOG }}
+          echo ${{ env.FILE_CONTENT_CHANGELOG }}
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
