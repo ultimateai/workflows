@@ -209,9 +209,11 @@ jobs:
         env:
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
 
-      - name: Changelog content debug2
+      - name: Changelog content for json
+        id: changelog_json_content
         run: |
-          echo "${{ env.FILTERED_CHANGELOG_CONTENT }}"
+          JSON_CONTENT=$(echo "${{ env.FILTERED_CHANGELOG_CONTENT }}" | sed 's/$/\\n/' | tr -d '\n')
+          echo "changelog_json=$JSON_CONTENT" >> $GITHUB_OUTPUT
           
       - name: Update the Image tags and env files for Selected Environment
         run: |-
@@ -292,7 +294,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Changelog: ${{ env.FILTERED_CHANGELOG_CONTENT }}"
+                    "text": "Changelog: ${{ env.JSON_CHANGELOG_CONTENT }}"
                   }
                 }
               ]
@@ -300,8 +302,7 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
-          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+          JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}
       
       
       - name: Gather relevant data for e2e testim tests
