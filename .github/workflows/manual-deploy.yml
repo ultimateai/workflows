@@ -165,7 +165,14 @@ jobs:
         name: Calculate version to deploy
         run: |-
           TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
-          echo "tag=$TAG" >> $GITHUB_OUTPUT  
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+      
+      - name: Changelog content
+        id: full_changelog_content
+        run: |
+          echo 'FILE_CONTENT_CHANGELOG<<FEND' >> $GITHUB_ENV
+          head -50 CHANGELOG.md >> $GITHUB_ENV
+          echo 'FEND' >> $GITHUB_ENV
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
@@ -192,6 +199,21 @@ jobs:
           echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT 
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+
+      - name: Changelog content
+        id: filter_changelog
+        run: |
+          echo 'FILTERED_CHANGELOG_CONTENT<<IPO' >> $GITHUB_ENV
+          echo "${{ env.FILE_CONTENT_CHANGELOG }}" | sed '/\.\.\.${{ env.OLD_VERSION }}/q' >> $GITHUB_ENV
+          echo 'IPO' >> $GITHUB_ENV
+        env:
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+
+      - name: Changelog content for json
+        id: changelog_json_content
+        run: |
+          JSON_CONTENT=$(echo "${{ env.FILTERED_CHANGELOG_CONTENT }}" | sed 's/$/\\n/' | tr -d '\n')
+          echo "changelog_json=$JSON_CONTENT" >> $GITHUB_OUTPUT
           
       - name: Update the Image tags and env files for Selected Environment
         run: |-
@@ -208,7 +230,7 @@ jobs:
               cat kustomization.yaml
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
-              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a
+              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "nothing to commit"
               git push ${REMOTE_REPO} HEAD:main --force 
               cd ../../../../
             done 
@@ -222,7 +244,7 @@ jobs:
             cat kustomization.yaml
             git config --local user.email $GITHUB_EMAIL
             git config --local user.name $GITHUB_USER
-            git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a
+            git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "nothing to commit"
             git push ${REMOTE_REPO} HEAD:main --force 
           fi
         env:
@@ -272,7 +294,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Version comparison:\n https://github.com/${{ github.event.repository.full_name }}/compare/${{ env.OLD_VERSION }}...${{ env.TAGS }} "
+                    "text": "Changelog: \n ${{ env.JSON_CHANGELOG_CONTENT }}"
                   }
                 }
               ]
@@ -280,8 +302,7 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
-          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+          JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}
       
       
       - name: Gather relevant data for e2e testim tests
