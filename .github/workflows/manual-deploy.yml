@@ -294,7 +294,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Changelog: \n ```${{ env.JSON_CHANGELOG_CONTENT }}"
+                    "text": "Changelog: \n ${{ env.JSON_CHANGELOG_CONTENT }}"
                   }
                 }
               ]
