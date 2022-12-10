@@ -229,7 +229,7 @@ jobs:
                 cd ../../../../
               done 
             else
-              cat $HOME/common-copy.env > $APP_SQUAD/$app_name/base/base.env
+              cat $HOME/common-copy.env > $APP_SQUAD/${APP_NAMES}/base/base.env
               cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
               cat $HOME/dev-copy.env > dev.env
               kustomize edit set image app=${IMAGE_NAME}:${TAG}
