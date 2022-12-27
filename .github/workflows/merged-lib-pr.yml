@@ -124,10 +124,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: main
-
-      - name: test please delete me later
-        run: cat package.json
-
+          
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
