@@ -178,5 +178,5 @@ jobs:
         run: $BUILD_COMMAND
 
       - name: Upload NPM Package to Artifact Registry
-        if: ${{ env.BUILD_COMMAND }}
+        if: ${{ env.PUBLISH_COMMAND }}
         run: $PUBLISH_COMMAND
