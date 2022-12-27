@@ -123,6 +123,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          ref: main
+
+      - name: test please delete me later
+        run: cat package.json
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -177,9 +181,6 @@ jobs:
       - name: build
         if: ${{ env.BUILD_COMMAND }}
         run: $BUILD_COMMAND
-      
-      - name: Upload NPM Package to Artifact Registry
-        run: cat package.json
         
       - name: Upload NPM Package to Artifact Registry
         if: ${{ env.PUBLISH_COMMAND }}
