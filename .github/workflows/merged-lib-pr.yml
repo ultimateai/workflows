@@ -1,0 +1,182 @@
+name: Merged PR to main library branch
+
+on:
+  workflow_call:
+    inputs:
+        github_email:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this email"
+        github_user:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this user"
+        update_file:
+          required: false
+          type: string
+          description: "The file with the version you want to update"
+        changelog:
+          required: false
+          type: boolean
+          description: "Update changelog"
+        initial_release:
+          required: false
+          type: string
+          description: "In case no release is present in the repo, which one should be the base release from which to bump - defaults to 0.0.0"
+          default: "0.0.1"
+        npm_install_command:
+          required: false
+          type: string
+          description: "Command for npm i, defaults to - npm i"
+          default: "npm i"
+        node_version:
+          required: false
+          type: string
+          default: "16.x"
+          description: "Node version used in the pipeline, defaults to 16.x"
+        test_command:
+          required: false
+          type: string
+          description: "Command for running your tests, defaults to - npm run test"
+          default: "npm run test"
+        build_command:
+          required: false
+          type: string
+          description: "Command for running npm run build, defaults to - npm run build"
+          default: "npm run build"
+        lint_command:
+          required: false
+          type: string
+          description: "Command for running npm run lint, defaults to - npm run lint"
+          default: "npm run lint"
+        publish_command:
+          required: false
+          type: string
+          description: "Command for publishing the artifact, defaults to - npm publish"
+          default: "npm publish"
+
+env:
+  IMAGE_REPO: ${{ inputs.image_repo }}
+  GITHUB_EMAIL: ${{ inputs.github_email }}
+  GITHUB_USER: ${{ inputs.github_user }}
+  UPDATE_FILE: ${{ inputs.update_file }}
+  CHANGELOG: ${{ inputs.changelog }}
+  INITIAL_RELEASE: ${{ inputs.initial_release }}
+  NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
+  NODE_VERSION: ${{ inputs.node_version }}
+  TEST_COMMAND: ${{ inputs.test_command }}
+  BUILD_COMMAND: ${{ inputs.build_command }}
+  LINT_COMMAND: ${{ inputs.lint_command }}
+  PUBLISH_COMMAND: ${{ inputs.publish_command }}
+
+jobs:
+  bump-release:
+    name: Bump release
+    if: github.event.pull_request.merged == true
+    runs-on: preemptible-runners
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+
+      - name: Bump version and release
+        id: bump_version
+        uses: ultimateai/bump-action@v0.5.8
+        with:
+          github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+          infer_bump_from_commit: true
+          update_file: ${{ env.UPDATE_FILE }}
+          changelog: ${{ env.CHANGELOG }}
+          initial_release: ${{ env.INITIAL_RELEASE }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Update package.json after bumping
+        if: ${{ env.UPDATE_FILE == 'package.json'}}
+        run: |-
+          git fetch;git pull
+          npm install --package-lock-only --no-audit
+          git config --local user.email $GITHUB_EMAIL
+          git config --local user.name $GITHUB_USER
+          git commit -m "Sync package-lock.json to ${BUMPED_VERSION}" -a
+          git push ${REMOTE_REPO} HEAD:main
+        env:
+          BUMPED_VERSION: ${{ steps.bump_version.outputs.next_version }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
+
+  build-and-publish:
+    name: Publish new version of the library into NPM Artifactory
+    runs-on: preemptible-runners
+    needs: bump-release
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - id: fetch_latest_release
+        uses: gregziegan/fetch-latest-release@v2.0.0
+        with:
+          github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+
+      - name: Export Home
+        run: echo "HOME=/root" >> $GITHUB_ENV
+
+      ##  Needs to be added so as to pull common Libs from bitbucket ##
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.BB_SSH_KEY }}
+          name: id_rsa
+          known_hosts: bitbucket.org
+          if_key_exists: ignore
+
+      ### Authenticating with Google Cloud to Push artifact to Google Artifactory ###
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v0"
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
+          service_account: ${{ secrets.GSA_GCR_EMAIL }}
+          export_environment_variables: true
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v0"
+
+      - name: Install npm Packages
+        run: |
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login
+          fi
+          $NPM_INSTALL_COMMAND
+
+      - name: Test
+        if: ${{ env.TEST_COMMAND }}
+        run: $TEST_COMMAND
+
+      - name: Lint
+        if: ${{ env.LINT_COMMAND }}
+        run: $LINT_COMMAND
+
+      - name: build
+        if: ${{ env.BUILD_COMMAND }}
+        run: $BUILD_COMMAND
+
+      - name: Upload NPM Package to Artifact Registry
+        if: ${{ env.BUILD_COMMAND }}
+        run: $PUBLISH_COMMAND
