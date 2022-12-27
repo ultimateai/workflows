@@ -177,7 +177,10 @@ jobs:
       - name: build
         if: ${{ env.BUILD_COMMAND }}
         run: $BUILD_COMMAND
-
+      
+      - name: Upload NPM Package to Artifact Registry
+        run: cat package.json
+        
       - name: Upload NPM Package to Artifact Registry
         if: ${{ env.PUBLISH_COMMAND }}
         run: $PUBLISH_COMMAND
