@@ -68,6 +68,7 @@ env:
   BUILD_COMMAND: ${{ inputs.build_command }}
   LINT_COMMAND: ${{ inputs.lint_command }}
   PUBLISH_COMMAND: ${{ inputs.publish_command }}
+  CI: true
 
 jobs:
   bump-release:
