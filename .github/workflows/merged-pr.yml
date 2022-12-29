@@ -193,7 +193,7 @@ jobs:
           fi
           
       - id: fetch_latest_release
-        uses: ultimateai/fetch-latest-release@2.1.0
+        uses: ultimateai/fetch-latest-release@main
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
 
