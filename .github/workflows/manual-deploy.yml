@@ -140,7 +140,7 @@ jobs:
                   cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-envfile.env
                 fi
                 if [[ -f "deployment_envs/$app_name/common.env" ]]; then
-                  cat "deployment_envs/$app_name/common.env" > $HOME/$app_name-commonfile.env
+                  echo "Please delete deployment_envs/$app_name/common.env" >> $GITHUB_STEP_SUMMARY
                 fi
               done
           else
@@ -152,12 +152,12 @@ jobs:
               cat "deployment_envs/dev.env" > $HOME/envfile.env
             fi
             if [[ -f "deployment_envs/common.env" ]]; then
-              cat "deployment_envs/common.env" > $HOME/commonfile.env
+              echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
             fi
           fi
 
       - id: fetch_latest_release
-        uses: gregziegan/fetch-latest-release@v2.0.0
+        uses: ultimateai/fetch-latest-release@2.1.0
         with:
           github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
 
@@ -221,9 +221,6 @@ jobs:
             IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
             for app_name in "${array_app_names[@]}"
             do
-              if [[ -f "$HOME/commonfile.env" ]]; then
-                cat $HOME/$app_name-commonfile.env > $APP_SQUAD/$app_name/base/base.env
-              fi
               cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
               FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
@@ -235,9 +232,6 @@ jobs:
               cd ../../../../
             done 
           else
-            if [[ -f "$HOME/commonfile.env" ]]; then
-              cat $HOME/commonfile.env > $APP_SQUAD/${APP_NAMES}/base/base.env
-            fi
             cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
             FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}

@@ -115,11 +115,9 @@ jobs:
               for app_name in "${array_app_names[@]}"
               do
                 cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-dev-copy.env
-                cat "deployment_envs/$app_name/common.env" > $HOME/$app_name-common-copy.env
               done
           else
             cat "deployment_envs/dev.env" > $HOME/dev-copy.env
-            cat "deployment_envs/common.env" > $HOME/common-copy.env
           fi
 
       - id: get_image_tag
@@ -217,7 +215,6 @@ jobs:
               IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
               for app_name in "${array_app_names[@]}"
               do
-                cat $HOME/$app_name-common-copy.env > $APP_SQUAD/$app_name/base/base.env
                 cd $APP_SQUAD/$app_name/overlay/${K8S_ENV_NAME}
                 cat $HOME/$app_name-dev-copy.env > dev.env
                 kustomize edit set image app=${IMAGE_NAME}:${TAG}
@@ -229,7 +226,6 @@ jobs:
                 cd ../../../../
               done 
             else
-              cat $HOME/common-copy.env > $APP_SQUAD/${APP_NAMES}/base/base.env
               cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
               cat $HOME/dev-copy.env > dev.env
               kustomize edit set image app=${IMAGE_NAME}:${TAG}
