@@ -139,14 +139,14 @@ jobs:
                   echo "In $app_name, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
                   exit 1
                 fi
-            fi
               done
-          else
-            STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
-            if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
-              echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
-              echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
-              exit 1
+            else
+              STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+              if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
+                echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
+                echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
+                exit 1
+              fi
             fi
           fi
         env:
