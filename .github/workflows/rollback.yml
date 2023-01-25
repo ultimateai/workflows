@@ -128,10 +128,24 @@ jobs:
       
       - name: Check if version is already deployed in stage, if trying to deploy in prod
         run: |-
-          if [[ "${ENVIRONMENT}" == "production" ]]; then
-            STAGE_VERSION=$(cat $APP_SQUAD/$APP_NAMES/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+          if [[ "${ENVIRONMENT}" = "production" ]]; then
+            if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                STAGE_VERSION=$(cat $APP_SQUAD/$app_name/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+                if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
+                  echo "In $app_name, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
+                  echo "In $app_name, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
+                  exit 1
+                fi
+            fi
+              done
+          else
+            STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
             if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
               echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
+              echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
               exit 1
             fi
           fi
