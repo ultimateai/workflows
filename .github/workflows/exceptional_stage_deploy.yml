@@ -66,7 +66,7 @@ env:
 
 jobs:
   deploy:
-    name: Update k8s-manifest repo
+    name: Update k8s manifest repo for staging deployment
     runs-on: preemptible-runners
     permissions:
       contents: "read"
