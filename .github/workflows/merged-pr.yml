@@ -134,7 +134,7 @@ jobs:
 
 
   push-and-deploy:
-    name: Push image with updated tag and update development environment
+    name: Push image with updated tag and deploy to pre environments
     runs-on: preemptible-runners
     needs: bump-release
     permissions:

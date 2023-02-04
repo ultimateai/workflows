@@ -95,8 +95,8 @@ env:
 
 
 jobs:
-  deploy:
-    name: Update k8s-manifest repo
+  deploy-to-production:
+    name: Update k8s manifest repo for production deployment
     runs-on: preemptible-runners
     outputs: 
       namespace: ${{ steps.gather_data.outputs.namespace }}
