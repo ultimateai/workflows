@@ -327,7 +327,7 @@ jobs:
           echo "deployment_name=$DEPLOYMENT_NAME" >> $GITHUB_OUTPUT
 
   run-e2e-test:
-    needs: deploy
+    needs: deploy-to-production
     if: ${{ needs.deploy-to-production.outputs.environment == 'staging' && needs.deploy-to-production.outputs.run_e2e_tests == 'true' }}
     name: run end to end tests
     runs-on: stable-runners
