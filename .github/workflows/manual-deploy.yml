@@ -95,8 +95,8 @@ env:
 
 
 jobs:
-  deploy-to-production:
-    name: Update k8s manifest repo for production deployment
+  deploy:
+    name: Update k8s manifest repo for ${{ inputs.ENVIRONMENT }} deployment
     runs-on: preemptible-runners
     outputs: 
       namespace: ${{ steps.gather_data.outputs.namespace }}
@@ -327,8 +327,8 @@ jobs:
           echo "deployment_name=$DEPLOYMENT_NAME" >> $GITHUB_OUTPUT
 
   run-e2e-test:
-    needs: deploy-to-production
-    if: ${{ needs.deploy-to-production.outputs.environment == 'staging' && needs.deploy-to-production.outputs.run_e2e_tests == 'true' }}
+    needs: deploy
+    if: ${{ needs.deploy.outputs.environment == 'staging' && needs.deploy.outputs.run_e2e_tests == 'true' }}
     name: run end to end tests
     runs-on: stable-runners
     permissions:
@@ -370,8 +370,8 @@ jobs:
           echo "Status of deployment is $FINAL_STATUS"
           echo "final_status=$FINAL_STATUS" >> $GITHUB_OUTPUT  
         env:
-          NAMESPACE: ${{needs.deploy-to-production.outputs.namespace}}
-          DEPLOYMENT_NAME: ${{needs.deploy-to-production.outputs.deployment_name}}
+          NAMESPACE: ${{needs.deploy.outputs.namespace}}
+          DEPLOYMENT_NAME: ${{needs.deploy.outputs.deployment_name}}
       
       - id: run_testim
         name: Run testim e2e test if deployment is true
@@ -391,7 +391,7 @@ jobs:
           payload: |-
             {
               "text": "Testim failed",
-              "thread_ts": "${{ needs.deploy-to-production.outputs.thread_ts }}",
+              "thread_ts": "${{ needs.deploy.outputs.thread_ts }}",
               "blocks": [
                 {
                   "type": "section",
@@ -421,7 +421,7 @@ jobs:
           payload: |-
             {
               "text": "Testim succeded",
-              "thread_ts": "${{ needs.deploy-to-production.outputs.thread_ts }}",
+              "thread_ts": "${{ needs.deploy.outputs.thread_ts }}",
               "blocks": [
                 {
                   "type": "section",
