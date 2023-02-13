@@ -245,7 +245,7 @@ jobs:
               cat kustomization.yaml
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
-              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit,$app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
               git push ${REMOTE_REPO} HEAD:main --force 
               cd ../../../../
             done 
@@ -349,39 +349,40 @@ jobs:
         with:
           node-version: '16.13.0'
 
-      - id: "auth"
-        name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v1"
-        with:
-          token_format: "access_token"
-          workload_identity_provider: ${{ secrets.STAGING_GKE_WIP }}
-          service_account: ${{ secrets.STAGING_GKE_SA }}
+      # This just makes no sense at all - deployments with new version can take up to five minutes to show. 
+      # - id: "auth"
+      #   name: "Authenticate to Google Cloud"
+      #   uses: "google-github-actions/auth@v1"
+      #   with:
+      #     token_format: "access_token"
+      #     workload_identity_provider: ${{ secrets.STAGING_GKE_WIP }}
+      #     service_account: ${{ secrets.STAGING_GKE_SA }}
 
-      - id: 'get-credentials'
-        uses: 'google-github-actions/get-gke-credentials@v1'
-        with:
-          cluster_name: ${{ env.STAGING_CLUSTER_NAME }}
-          location: ${{ env.STAGING_CLUSTER_LOCATION }}
+      # - id: 'get-credentials'
+      #   uses: 'google-github-actions/get-gke-credentials@v1'
+      #   with:
+      #     cluster_name: ${{ env.STAGING_CLUSTER_NAME }}
+      #     location: ${{ env.STAGING_CLUSTER_LOCATION }}
 
-      - uses: azure/setup-kubectl@v3
-        id: install
+      # - uses: azure/setup-kubectl@v3
+      #   id: install
       
-      - id: "check_status"
-        name: "Check deployment status in cluster"
-        run: |-
-          echo "Next line is max status tries"
-          echo $MAX_STATUS_TRIES
-          NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME -lt $MAX_STATUS_TRIES ]];do echo $NEXT_WAIT_TIME;sleep $(( NEXT_WAIT_TIME++ ));done;
-          FINAL_STATUS=$(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")
-          echo "Status of deployment is $FINAL_STATUS"
-          echo "final_status=$FINAL_STATUS" >> $GITHUB_OUTPUT  
-        env:
-          NAMESPACE: ${{needs.deploy.outputs.namespace}}
-          DEPLOYMENT_NAME: ${{needs.deploy.outputs.deployment_name}}
+      # - id: "check_status"
+      #   name: "Check deployment status in cluster"
+      #   run: |-
+      #     echo "Next line is max status tries"
+      #     echo $MAX_STATUS_TRIES
+      #     NEXT_WAIT_TIME=0;while [[ $(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")=="False" ]] && [[ $NEXT_WAIT_TIME -lt $MAX_STATUS_TRIES ]];do echo $NEXT_WAIT_TIME;sleep $(( NEXT_WAIT_TIME++ ));done;
+      #     FINAL_STATUS=$(kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE -o jsonpath="{.status.conditions[0].status}")
+      #     echo "Status of deployment is $FINAL_STATUS"
+      #     echo "final_status=$FINAL_STATUS" >> $GITHUB_OUTPUT  
+      #   env:
+      #     NAMESPACE: ${{needs.deploy.outputs.namespace}}
+      #     DEPLOYMENT_NAME: ${{needs.deploy.outputs.deployment_name}}
       
       - id: run_testim
         name: Run testim e2e test if deployment is true
-        if: ${{ env.FINAL_STATUS == 'True'}}
+        # if: ${{ env.FINAL_STATUS == 'True'}}
         continue-on-error: true
         run: |-
           npm i -g @testim/testim-cli && testim --token ${{ secrets.TESTIM_API_TOKEN }} --project $TESTIM_PROJECT --grid $TESTIM_GRID --suite $TESTIM_SUITE $TESTIM_ADDITIONAL_FLAGS
@@ -390,7 +391,6 @@ jobs:
 
       - uses: slackapi/slack-github-action@v1.23.0
         name: Slack notification
-        if: ${{ env.FINAL_STATUS == 'True'}}
         id: slack_notif_testim
         with:
           channel-id: ${{ env.SLACK_CHANNEL_ID }}
