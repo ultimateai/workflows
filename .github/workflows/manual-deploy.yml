@@ -381,7 +381,7 @@ jobs:
       #     DEPLOYMENT_NAME: ${{needs.deploy.outputs.deployment_name}}
       
       - id: run_testim
-        name: Run testim e2e test if deployment is true
+        name: Run testim e2e test suite
         # if: ${{ env.FINAL_STATUS == 'True'}}
         continue-on-error: true
         run: |-
@@ -402,7 +402,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} - with testim results inside!`"
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} - with testim results inside!"
                   }
                 }
               ]
