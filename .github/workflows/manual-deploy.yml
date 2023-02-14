@@ -174,7 +174,7 @@ jobs:
         id: full_changelog_content
         run: |
           echo "FILE_CONTENT_CHANGELOG<<FEND" >> $GITHUB_ENV
-          head -40 CHANGELOG.md >> $GITHUB_ENV
+          head -40 CHANGELOG.md | tr -d '"' >> $GITHUB_ENV
           echo "FEND" >> $GITHUB_ENV
 
       - name: "Checkout k8s manifests"
