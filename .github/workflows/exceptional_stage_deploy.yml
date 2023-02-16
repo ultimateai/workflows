@@ -32,6 +32,16 @@ on:
           type: string
           description: "Command for running your tests, defaults to - npm run test"
           default: "npm run test"
+        build_command:
+          required: false
+          type: string
+          description: "Command for building, defaults to - npm run build"
+          default: "npm run build"
+        lint_command:
+          required: false
+          type: string
+          description: "Command for running your linting, defaults to - npm run lint"
+          default: "npm run lint"
         npm_install_command:
           required: false
           type: string
@@ -59,6 +69,8 @@ env:
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
   BRANCH_NAME: ${{ inputs.branch_name }}
   TEST_COMMAND: ${{ inputs.test_command }}
+  BUILD_COMMAND: ${{ inputs.build_command }}
+  LINT_COMMAND: ${{ inputs.lint_command }}
   APP_NAMES: ${{ inputs.app_names }}
   NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
   NODE_VERSION: ${{ inputs.node_version }}
@@ -154,14 +166,16 @@ jobs:
           $NPM_INSTALL_COMMAND
       
       - name: Lint
-        run: npm run lint
+        if: ${{ env.LINT_COMMAND }}
+        run: $LINT_COMMAND
 
       - name: Test
         if: ${{ env.TEST_COMMAND }}
         run: $TEST_COMMAND
 
       - name: build
-        run: npm run build
+        if: ${{ env.BUILD_COMMAND }}
+        run: $BUILD_COMMAND
 
       - name: "Authenticating docker to push to gcr"
         uses: docker/login-action@v2.1.0
