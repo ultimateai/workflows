@@ -124,9 +124,33 @@ jobs:
       #     echo '::set-output name=tag::'$TAG
       - name: Get environment.env file for updating k8s-manifest repo
         run: |-
-          chmod +x .github/workflows/scripts/env_files.sh
-          ./.github/workflows/scripts/env_files.sh
-        shell: bash
+          if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                if [[ "${ENVIRONMENT}" = "production" ]]; then
+                  cat "deployment_envs/$app_name/prod.env" > $HOME/$app_name-envfile.env
+                elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+                  cat "deployment_envs/$app_name/stage.env" > $HOME/$app_name-envfile.env
+                else
+                  cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-envfile.env
+                fi
+                if [[ -f "deployment_envs/$app_name/common.env" ]]; then
+                  echo "Please delete deployment_envs/$app_name/common.env" >> $GITHUB_STEP_SUMMARY
+                fi
+              done
+          else
+            if [[ "${ENVIRONMENT}" = "production" ]]; then
+              cat "deployment_envs/prod.env" > $HOME/envfile.env
+            elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+              cat "deployment_envs/stage.env" > $HOME/envfile.env
+            else
+              cat "deployment_envs/dev.env" > $HOME/envfile.env
+            fi
+            if [[ -f "deployment_envs/common.env" ]]; then
+              echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
@@ -172,9 +196,30 @@ jobs:
           
       - name: Update the Image tags for Selected Environment
         run: |-
-          chmod +x .github/workflows/scripts/update_manifest_repo.sh
-          ./.github/workflows/scripts/update_manifest_repo.sh
-        shell: bash
+          if [[ $APP_NAMES == *","* ]]; then
+            IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+            for app_name in "${array_app_names[@]}"
+            do
+              cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
+              FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              cat kustomization.yaml
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+              git push ${REMOTE_REPO} HEAD:main --force 
+              cd ../../../../
+            done 
+          else
+            cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
+            FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+            cat kustomization.yaml
+            git config --local user.email $GITHUB_EMAIL
+            git config --local user.name $GITHUB_USER
+            git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+            git push ${REMOTE_REPO} HEAD:main --force 
+          fi
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
