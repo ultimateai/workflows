@@ -61,7 +61,7 @@ env:
 
 jobs:
   deploy_rollback:
-    name: Update k8s-manifest repo
+    name: Rollback k8s manifest repo for ${{ inputs.ENVIRONMENT }} deployment
     runs-on: preemptible-runners
     permissions:
       contents: "read"
@@ -70,6 +70,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          ref: ${{ inputs.version }}
           
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"
@@ -121,6 +122,11 @@ jobs:
       #       fi
       #     fi
       #     echo '::set-output name=tag::'$TAG
+      - name: Get environment.env file for updating k8s-manifest repo
+        run: |-
+          chmod +x .github/workflows/scripts/env_files.sh
+          ./.github/workflows/scripts/env_files.sh
+        shell: bash
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v3
@@ -166,28 +172,9 @@ jobs:
           
       - name: Update the Image tags for Selected Environment
         run: |-
-          if [[ $APP_NAMES == *","* ]]; then
-            IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
-            for app_name in "${array_app_names[@]}"
-            do
-              cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
-              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
-              cat kustomization.yaml
-              git config --local user.email $GITHUB_EMAIL
-              git config --local user.name $GITHUB_USER
-              git commit -m "Rollback $app_name image to ${IMAGE_NAME}:${TAGS}" -a
-              git push ${REMOTE_REPO} HEAD:main --force 
-              cd ../../../../
-            done 
-          else
-            cd $APP_SQUAD/$APP_NAMES/overlay/$ENVIRONMENT
-            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
-            cat kustomization.yaml
-            git config --local user.email $GITHUB_EMAIL
-            git config --local user.name $GITHUB_USER
-            git commit -m "Rollback image to ${IMAGE_NAME}:${TAGS}" -a
-            git push ${REMOTE_REPO} HEAD:main --force 
-          fi
+          chmod +x .github/workflows/scripts/update_manifest_repo.sh
+          ./.github/workflows/scripts/update_manifest_repo.sh
+        shell: bash
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
