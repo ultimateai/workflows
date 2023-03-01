@@ -211,7 +211,7 @@ jobs:
               cd ../../../../
             done 
           else
-            cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
+            cd $APP_SQUAD/$APP_NAMES/overlay/$ENVIRONMENT
             FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
             cat kustomization.yaml
