@@ -76,9 +76,8 @@ jobs:
         name: "Get repo name and update IMAGE_NAME"
         run: |- 
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
-          echo $IMAGE_NAME
-          echo '::set-output name=image_name::'$IMAGE_NAME
-
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          
       - id: fetch_latest_release
         uses: ultimateai/fetch-latest-release@2.1.1
         with:
