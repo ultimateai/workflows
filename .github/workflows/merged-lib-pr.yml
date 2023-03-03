@@ -138,6 +138,15 @@ jobs:
       - name: Export Home
         run: echo "HOME=/root" >> $GITHUB_ENV
 
+      ##  Needs to be added so as to pull common Libs from bitbucket ##
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.BB_SSH_KEY }}
+          name: id_rsa
+          known_hosts: bitbucket.org
+          if_key_exists: ignore
+
       ### Authenticating with Google Cloud to Push artifact to Google Artifactory ###
       - id: "auth"
         name: "Authenticate to Google Cloud"
