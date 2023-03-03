@@ -163,7 +163,7 @@ jobs:
       - name: Install npm Packages
         run: |
           if grep -q artifactregistry-login "package.json"; then
-            npm run artifactregistry-login
+            npm run artifactregistry-login -- --credential-config .npmrc
           fi
           $NPM_INSTALL_COMMAND
       
