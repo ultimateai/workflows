@@ -268,18 +268,11 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
-      # - name: Send event to devlake
-      #   if: ${{ env.ENVIRONMENT == 'production' }} 
-      #   id: devlake_deployment_event
-      #   run: |
-      #     curl http://devlake.common.int.ultimate.ai/api/plugins/webhook/1/deployments -X 'POST' -d "{ \"commit_sha\":\"the sha of deployment commit\", \"repo_url\":\"\", \"start_time\":\"Optional, eg. 2020-01-01T12:00:00+00:00\" }"
       - name: Send event to devlake
         if: ${{ env.ENVIRONMENT == 'production' }} 
         id: devlake_deployment_event
         run: |
-          echo ${{ github.sha }}
-          echo https://github.com/ultimateai/${{ github.event.repository.name }}
-          echo $(date +'%Y-%m-%dT%H:%M:%S')
+          curl http://devlake.common.int.ultimate.ai/api/plugins/webhook/1/deployments -X 'POST' -d "{ \"commit_sha\":\"${{ github.sha }}\", \"repo_url\":\"https://github.com/ultimateai/${{ github.event.repository.name }}\", \"start_time\":\"$(date +'%Y-%m-%dT%H:%M:%S')\" }"
 
       - uses: slackapi/slack-github-action@v1.23.0
         name: Slack notification
