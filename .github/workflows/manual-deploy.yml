@@ -272,7 +272,8 @@ jobs:
         if: ${{ env.ENVIRONMENT == 'production' }} 
         id: devlake_deployment_event
         run: |
-          curl http://devlake.common.int.ultimate.ai/api/plugins/webhook/1/deployments -X 'POST' -d "{ \"commit_sha\":\"${{ github.sha }}\", \"repo_url\":\"https://github.com/ultimateai/${{ github.event.repository.name }}\", \"start_time\":\"$(date +'%Y-%m-%dT%H:%M:%S')\" }"
+          CURRENT_DATE=$(date +'%Y-%m-%dT%H:%M:%S')
+          curl http://devlake.common.int.ultimate.ai/api/plugins/webhook/1/deployments -X 'POST' -d "{ \"commit_sha\":\"${{ github.sha }}\", \"repo_url\":\"https://github.com/ultimateai/${{ github.event.repository.name }}\", \"start_time\":\"$CURRENT_DATE\" }"
 
       - uses: slackapi/slack-github-action@v1.23.0
         name: Slack notification
