@@ -270,7 +270,7 @@ jobs:
 
       - name: get current time for devLake webhook
         run: |
-          CURRENT_DATE=$(date +'%Y-%m-%dT%H:%M:%S') >> $GITHUB_ENV
+          echo "CURRENT_DATE=$(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_ENV
 
       - name: Send event to devlake
         if: ${{ env.ENVIRONMENT == 'production' }} 
