@@ -132,6 +132,9 @@ jobs:
         if: ${{ env.UPDATE_FILE == 'package.json'}}
         run: |-
           git fetch;git pull
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login -- --credential-config .npmrc
+          fi
           npm install --package-lock-only --no-audit
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
