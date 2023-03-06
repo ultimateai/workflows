@@ -119,6 +119,15 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+       ### Authentings with Google Cloud because of artifact registry ###
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
+          service_account: ${{ secrets.GSA_GCR_EMAIL }}
+
       - name: Update package.json after bumping
         if: ${{ env.UPDATE_FILE == 'package.json'}}
         run: |-
@@ -213,7 +222,7 @@ jobs:
       ### Authentings with Google Cloud to Push Image to GCR ###
       - id: "auth"
         name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v0"
+        uses: "google-github-actions/auth@v1"
         with:
           token_format: "access_token"
           workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
@@ -227,7 +236,7 @@ jobs:
           password: "${{ steps.auth.outputs.access_token }}"
 
       - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v0"
+        uses: "google-github-actions/setup-gcloud@v1"
 
       - name: Install npm Packages
         run: |
