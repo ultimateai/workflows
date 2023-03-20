@@ -106,7 +106,8 @@ jobs:
           npm install --package-lock-only --no-audit
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
-          git commit -m "Sync package-lock.json to ${BUMPED_VERSION}" -a
+          git add package-lock.json
+          git commit -m "Sync package-lock.json to ${BUMPED_VERSION}"
           git push ${REMOTE_REPO} HEAD:main
         env:
           BUMPED_VERSION: ${{ steps.bump_version.outputs.next_version }}
