@@ -186,13 +186,13 @@ jobs:
       - name: Check if version is already deployed in stage, if trying to deploy in prod
         if: ${{ (env.ENVIRONMENT == 'production') }}
         run: |-
-          if [[ $APP_NAMES == *","* ]]; then
-              STAGE_VERSION=$(cat $APP_SQUAD/$SINGLE_APP_NAME/overlay/staging/kustomization.yaml | yq .images.0.newTag)
-              if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
-                echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
-                echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
-                exit 1
-              fi
+          if [[ "${SINGLE_APP_NAME}" ]]; then
+            STAGE_VERSION=$(cat $APP_SQUAD/$SINGLE_APP_NAME/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+            if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
+              echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
+              echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
           else
             STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
             if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
@@ -208,7 +208,7 @@ jobs:
       - name: Check old deployed version in env to improve slack message
         id: get_old_version
         run: |-
-          if [[ $APP_NAMES == *","* ]]; then
+          if [[ "${SINGLE_APP_NAME}" ]]; then
             OLD_VERSION=$(cat $APP_SQUAD/$SINGLE_APP_NAME/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
           else
             OLD_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
@@ -250,7 +250,11 @@ jobs:
               cd ../../../../
             done 
           else
-            cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
+            if [[ "${SINGLE_APP_NAME}" ]]; then
+              cd $APP_SQUAD/$SINGLE_APP_NAME/overlay/$ENVIRONMENT
+            else
+              cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
+            fi
             FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
             cat kustomization.yaml
@@ -264,6 +268,7 @@ jobs:
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
+          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
 
       - uses: slackapi/slack-github-action@v1.23.0
         name: Slack notification
