@@ -345,4 +345,7 @@ jobs:
     permissions:
       contents: "read"
       id-token: "write"
-    uses: ultimateai/e2e-tests/.github/workflows/shard-e2e.yml@main
+    uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@main
+    with:
+      e2e_repo: ultimateai/e2e-tests
+    secrets: inherit
