@@ -344,4 +344,5 @@ jobs:
     uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@main
     with:
       e2e_repo: ultimateai/e2e-tests
+      projects: "[chromium,firefox]"
     secrets: inherit
