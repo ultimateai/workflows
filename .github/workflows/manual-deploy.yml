@@ -349,6 +349,7 @@ jobs:
 
   e2e-tests-result-slack:
     needs: run-e2e-test
+    if: success() || failure()
     name: send slack notification of e2e tests
     runs-on: preemptible-runners
     permissions:
