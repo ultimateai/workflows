@@ -341,8 +341,9 @@ jobs:
     needs: deploy
     if: ${{ needs.deploy.outputs.environment == 'staging' && needs.deploy.outputs.run_e2e_tests == 'true' }}
     name: run end to end tests
-    uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@main
+    uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@pw-notification
     with:
       e2e_repo: ultimateai/e2e-tests
       projects: '["chromium"]'
+      thread_ts: ${{ needs.deploy.outputs.thread_ts }}
     secrets: inherit
