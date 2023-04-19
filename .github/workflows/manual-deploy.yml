@@ -358,7 +358,7 @@ jobs:
     steps:
       - uses: slackapi/slack-github-action@v1.23.0
         name: Slack notification
-        id: slack_notif_e2e
+        id: slack_notif_e2egit
         with:
           channel-id: ${{ env.SLACK_CHANNEL_ID }}
           payload: |-
