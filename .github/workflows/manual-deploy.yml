@@ -376,26 +376,26 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
 
       - name: Slack Notification for testim failure
-          id: slack_e2e_notif_failure
-          uses: slackapi/slack-github-action@v1.23.0
-          with:
-            channel-id: ${{ env.SLACK_CHANNEL_ID }}
-            payload: |-
-              {
-                "text": "Testim failed",
-                "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
-                "blocks": [
-                  {
-                    "type": "section",
-                    "text": {
-                      "type": "mrkdwn",
-                      "text": ":x: Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites "
-                    }
+        id: slack_e2e_notif_failure
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Testim failed",
+              "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":x: Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites "
                   }
-                ]
-              }
-          env:
-            SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
 
         
 
