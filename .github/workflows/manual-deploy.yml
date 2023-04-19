@@ -400,7 +400,7 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
 
-      - name: Slack Notification for e2e failure
+      - name: Slack Notification for e2e success
         if: ${{ contains(needs.run-e2e-test.result, 'success') }}
         id: slack_e2e_notif_success
         uses: slackapi/slack-github-action@v1.23.0
