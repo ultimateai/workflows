@@ -345,5 +345,57 @@ jobs:
     with:
       e2e_repo: ultimateai/e2e-tests
       projects: '["chromium"]'
-      slack_deployment_thread_ts: ${{ needs.deploy.outputs.thread_ts }}
     secrets: inherit
+
+  e2e-tests-result-slack:
+    needs: run-e2e-test
+    name: send slack notification of e2e tests
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: slackapi/slack-github-action@v1.23.0
+        name: Slack notification
+        id: slack_notif_e2e
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} - with e2e results inside!"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+
+      - name: Slack Notification for testim failure
+          id: slack_e2e_notif_failure
+          uses: slackapi/slack-github-action@v1.23.0
+          with:
+            channel-id: ${{ env.SLACK_CHANNEL_ID }}
+            payload: |-
+              {
+                "text": "Testim failed",
+                "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
+                "blocks": [
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": ":x: Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites "
+                    }
+                  }
+                ]
+              }
+          env:
+            SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+
+        
+
