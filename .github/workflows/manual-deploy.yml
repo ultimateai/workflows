@@ -356,6 +356,17 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
+      - uses: actions/github-script@v6
+        id: job-url
+        with:
+          script: |
+              const { data } = await github.rest.actions.listJobsForWorkflowRunAttempt({
+                ...context.repo,
+                run_id: context.runId,
+                attempt_number: process.env.GITHUB_RUN_ATTEMPT,
+              });
+              return data.jobs[0].html_url
+
       - uses: slackapi/slack-github-action@v1.23.0
         name: Slack notification
         id: slack_notif_e2e
@@ -392,7 +403,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":x: E2e failed! Please check your tests =( "
+                    "text": ":x: E2e failed! Please check your tests at ${{ steps.job-url.outputs.result }}"
                   }
                 }
               ]
@@ -415,7 +426,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":white_check_mark: E2e worked! Nice job "
+                    "text": ":white_check_mark: E2e worked! You can see more info at ${{ steps.job-url.outputs.result }}"
                   }
                 }
               ]
