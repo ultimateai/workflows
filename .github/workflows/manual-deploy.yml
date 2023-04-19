@@ -341,8 +341,91 @@ jobs:
     needs: deploy
     if: ${{ needs.deploy.outputs.environment == 'staging' && needs.deploy.outputs.run_e2e_tests == 'true' }}
     name: run end to end tests
-    uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@main
+    uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@0.1.0
     with:
       e2e_repo: ultimateai/e2e-tests
       projects: '["chromium"]'
     secrets: inherit
+
+  e2e-tests-result-slack:
+    needs: run-e2e-test
+    if: success() || failure()
+    name: send slack notification of e2e tests
+    runs-on: preemptible-runners
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: slackapi/slack-github-action@v1.23.0
+        name: Slack notification
+        id: slack_notif_e2e
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} - with e2e results inside!"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+
+      - name: Slack Notification for e2e failure
+        if: ${{ contains(needs.run-e2e-test.result, 'failure') }}
+        id: slack_e2e_notif_failure
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "e2e failed",
+              "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":x: E2e failed! Please check your tests result at https://github.com/ultimateai/${{ github.event.repository.name }}/actions/workflows/manual-deploy.yml"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+
+      - name: Slack Notification for e2e success
+        if: ${{ contains(needs.run-e2e-test.result, 'success') }}
+        id: slack_e2e_notif_success
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "e2e worked",
+              "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":white_check_mark: E2e worked! You can see more info at Please check your tests result at https://github.com/ultimateai/${{ github.event.repository.name }}/actions/workflows/manual-deploy.yml"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+
+        
+
+
+
+        
+
