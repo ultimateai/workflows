@@ -377,27 +377,55 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
 
-      - name: Slack Notification for testim failure
+      - name: Slack Notification for e2e failure
+        if: ${{ contains(needs.run-e2e-test.result, 'failure') }}
         id: slack_e2e_notif_failure
         uses: slackapi/slack-github-action@v1.23.0
         with:
           channel-id: ${{ env.SLACK_CHANNEL_ID }}
           payload: |-
             {
-              "text": "Testim failed",
+              "text": "e2e failed",
               "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":x: Testim failed! Please check `${{ env.TESTIM_SUITE }}` suite on https://app.testim.io/#/project/${{ env.TESTIM_PROJECT }}/branch/master/runs/suites "
+                    "text": ":x: E2e failed! Please check your tests =( "
                   }
                 }
               ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+
+      - name: Slack Notification for e2e failure
+        if: ${{ contains(needs.run-e2e-test.result, 'success') }}
+        id: slack_e2e_notif_success
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "e2e worked",
+              "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":white_check_mark: E2e worked! Nice job "
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+
+        
+
+
 
         
 
