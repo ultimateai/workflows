@@ -30,37 +30,8 @@ on:
         run_e2e_tests:
           required: false
           type: string
-          description: "Wether to execute or not e2e tests - if yes, staging cluster name, testim_project, testim_grid and testim_suite must be provided"
+          description: "Wether to execute or not e2e tests"
           default: "false"
-        staging_cluster_name:
-          required: false
-          type: string
-          description: "Cluster name of stage environment, where e2e test will be run"
-        staging_cluster_location:
-          required: false
-          type: string
-          description: "Location of cluster in stage environment"
-        testim_project:
-          required: false
-          type: string
-          description: "Testim project ID"
-        testim_grid:
-          required: false
-          type: string
-          description: "Testim grid"
-        testim_suite:
-          required: false
-          type: string
-          description: "Testim suite"
-        testim_additional_flags:
-          required: false 
-          type: string
-          description: "Additional flags for testim cli (--turbo-mode --parallel 2)"
-        max_status_tries:
-          required: false 
-          type: number
-          description: "Marks increasing wait time for step checking deployment status"
-          default: 12
         app_names:
           required: false
           type: string
@@ -83,13 +54,6 @@ env:
   GITHUB_USER: ${{ inputs.github_user }}
   K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
   RUN_E2E_TESTS: ${{ inputs.run_e2e_tests }}
-  STAGING_CLUSTER_NAME: ${{ inputs.staging_cluster_name }}
-  STAGING_CLUSTER_LOCATION: ${{ inputs.staging_cluster_location }}
-  TESTIM_PROJECT: ${{ inputs.testim_project }}
-  TESTIM_GRID: ${{ inputs.testim_grid }}
-  TESTIM_SUITE: ${{ inputs.testim_suite }}
-  TESTIM_ADDITIONAL_FLAGS: ${{ inputs.testim_additional_flags }}
-  MAX_STATUS_TRIES: ${{ inputs.max_status_tries }}
   APP_NAMES: ${{ inputs.app_names }}
   SLACK_CHANNEL_ID: ${{ inputs.slack_channel_id }}
 
