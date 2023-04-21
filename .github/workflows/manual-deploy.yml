@@ -62,12 +62,9 @@ jobs:
   deploy:
     name: Update k8s manifest repo for ${{ inputs.ENVIRONMENT }} deployment
     runs-on: preemptible-runners
-    outputs: 
-      namespace: ${{ steps.gather_data.outputs.namespace }}
-      deployment_name: ${{ steps.gather_data.outputs.deployment_name }}
+    outputs:
       environment: ${{ env.ENVIRONMENT }}
       run_e2e_tests: ${{ env.RUN_E2E_TESTS }}
-      thread_ts: ${{ steps.slack_notif.outputs.thread_ts }}
     permissions:
       contents: "read"
       id-token: "write"
@@ -285,21 +282,6 @@ jobs:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}
       
-      
-      - name: Gather relevant data for e2e testim tests
-        id: gather_data
-        if: ${{ (env.ENVIRONMENT == 'staging') && (env.RUN_E2E_TESTS == 'true') }} 
-        run: |-
-          NAMESPACE=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .namespace)
-          if [[ -z "${SINGLE_APP_NAME}" ]]; then
-            DEPLOYMENT_NAME=$(echo $(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .namePrefix)deployment)
-          else
-            DEPLOYMENT_NAME=$(echo $(cat $APP_SQUAD/$SINGLE_APP_NAME/overlay/$ENVIRONMENT/kustomization.yaml | yq .namePrefix)deployment)
-          fi
-          echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
-          echo "deployment_name=$DEPLOYMENT_NAME" >> $GITHUB_OUTPUT
-        env:
-          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
 
   run-e2e-test:
     needs: deploy

@@ -88,12 +88,6 @@ Input needed:
     - github_user: automatic bot user for commiting 
     - k8s_manifests_repo: {organization}/{repo} containing your argoCD-linked repo like ultimateai/k8s-manifests
     - run_e2e_tests: Wether to launch of not e2e testim tests - only in case of deployment to staging
-    - staging_cluster_name: ultimateai-staging-main-1
-    - staging_cluster_location: europe-west1
-    - testim_project: 4j2SxviWIdxspepqscef
-    - testim_grid: Testim-Grid
-    - testim_suite: Which testim suite you want to execute - normally, Critical or Moderate. 
-    - testim_additional_flags: Additional CLI parameters for testim, don't touch this parameter too much without your qa team involved "--turbo-mode --parallel 2"
     - slack_channel_id: Slack channel ID where you want your notifications. Can be the ID itself, or the name of the channel. 
 
 -   `rollback.yml`: This action will deploy a selected version to a selected environment. If version is not provided, it will deploy the latest release =)
