@@ -79,7 +79,7 @@ Input needed:
     - lint_command: (Optional 🟣) Customizable, by default is npm run lint, but can be disabled if set to empy string
     - npm_install_command: (Optional 🟣) Customizable, by default is npm i, but can be disabled if set to empy string
     - node_version: (Optional 🟣) Default is 16.x
--   `manual-deploy.yml`: This action will deploy your latest release to a desired environment (for deploying a specific release, go to rollback!), but make sure you have that version deployed in staging already, or it will fail! Additionally, if you're deploying to staging there is the option to add, after a successful deployment, e2e test launched via testim. 
+-   `manual-deploy.yml`: This action will deploy your latest release to a desired environment (for deploying a specific release, go to rollback!), but make sure you have that version deployed in staging already, or it will fail! Additionally, if you're deploying to staging there is the option to add, after a successful deployment, e2e tests. 
 Input needed:
     - image_repo: container registry (like eu.gcr.io/ultimateai-169214)
     - app_squad: folder inside k8s-repo containing your kustomize code (backend, qa, ia...)
@@ -87,7 +87,7 @@ Input needed:
     - github_email: automatic bot email for commiting 
     - github_user: automatic bot user for commiting 
     - k8s_manifests_repo: {organization}/{repo} containing your argoCD-linked repo like ultimateai/k8s-manifests
-    - run_e2e_tests: Wether to launch of not e2e testim tests - only in case of deployment to staging
+    - run_e2e_tests: Wether to launch of not e2e tests - only in case of deployment to staging
     - slack_channel_id: Slack channel ID where you want your notifications. Can be the ID itself, or the name of the channel. 
 
 -   `rollback.yml`: This action will deploy a selected version to a selected environment. If version is not provided, it will deploy the latest release =)
