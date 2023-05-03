@@ -1,0 +1,204 @@
+name: Cronjob Manual deploy
+
+on:
+  workflow_call:
+    inputs:
+        image_repo:
+          required: true
+          type: string
+          description: "Your container registry repository - like eu.gcr.io/ultimateai-169214"
+        app_squad:
+          required: true
+          type: string
+          description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
+        environment:
+          required: true
+          type: string
+          description: "In which environment do you want to deploy"
+        github_email:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this email"
+        github_user:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this user"
+        k8s_manifests_repo:
+          required: true
+          type: string
+          description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+        slack_channel_id:
+          required: false
+          type: string
+          default: "#plt-239"
+          description: "Slack channel ID where you want your notifications"
+
+        
+        
+
+
+env:
+  IMAGE_REPO: ${{ inputs.image_repo }}
+  APP_SQUAD: ${{ inputs.app_squad }}
+  ENVIRONMENT: ${{ inputs.environment }}
+  GITHUB_EMAIL: ${{ inputs.github_email }}
+  GITHUB_USER: ${{ inputs.github_user }}
+  K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
+  SLACK_CHANNEL_ID: ${{ inputs.slack_channel_id }}
+
+
+jobs:
+  deploy:
+    name: Update k8s manifest repo for ${{ inputs.ENVIRONMENT }} deployment
+    runs-on: preemptible-runners
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+  
+      - id: "image_name"
+        name: "Get repo name and update IMAGE_NAME"
+        run: |- 
+          IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          
+      - name: Get environment.env file for updating k8s-manifest repo
+        run: |-
+          if [[ "${ENVIRONMENT}" = "production" ]]; then
+            cat "deployment_envs/prod.env" > $HOME/envfile.env
+          elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+            cat "deployment_envs/stage.env" > $HOME/envfile.env
+          else
+            cat "deployment_envs/dev.env" > $HOME/envfile.env
+          fi
+          if [[ -f "deployment_envs/common.env" ]]; then
+            echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - id: fetch_latest_release
+        uses: ultimateai/fetch-latest-release@2.1.1
+        with:
+          github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+
+      - id: tag_to_deploy
+        name: Calculate version to deploy
+        run: |-
+          TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+      
+      - name: Changelog content
+        id: full_changelog_content
+        run: |
+          echo "FILE_CONTENT_CHANGELOG<<FEND" >> $GITHUB_ENV
+          head -40 CHANGELOG.md | tr -d '"' >> $GITHUB_ENV
+          echo "FEND" >> $GITHUB_ENV
+
+      - name: "Checkout k8s manifests"
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.K8S_MANIFESTS_REPO }}
+          token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+      
+      - name: Check if version is already deployed in stage, if trying to deploy in prod
+        if: ${{ (env.ENVIRONMENT == 'production') }}
+        run: |-
+          STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+          if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
+            echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
+            echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+
+      - name: Check old deployed version in env to improve slack message
+        id: get_old_version
+        run: |-
+          OLD_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
+          echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT 
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+
+      - name: Changelog content
+        id: filter_changelog
+        run: |
+          echo "FILTERED_CHANGELOG_CONTENT<<IPO" >> $GITHUB_ENV
+          echo "${{ env.FILE_CONTENT_CHANGELOG }}" | sed '/\.\.\.${{ env.OLD_VERSION }}/q' >> $GITHUB_ENV
+          echo "IPO" >> $GITHUB_ENV
+        env:
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+
+      - name: Changelog content for json
+        id: changelog_json_content
+        run: |
+          JSON_CONTENT=$(echo "${{ env.FILTERED_CHANGELOG_CONTENT }}" | sed 's/$/\\n/' | tr -d '\n')
+          echo "changelog_json=$JSON_CONTENT" >> $GITHUB_OUTPUT
+          
+      - name: Update the Image tags and env files for Selected Environment
+        run: |-
+          cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
+          FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+          kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+          cat kustomization.yaml
+          git config --local user.email $GITHUB_EMAIL
+          git config --local user.name $GITHUB_USER
+          git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+          git push ${REMOTE_REPO} HEAD:main --force 
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+
+      - uses: slackapi/slack-github-action@v1.23.0
+        name: Slack notification
+        id: slack_notif
+        if: ${{ env.ENVIRONMENT == 'production' }} 
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+
+      - uses: slackapi/slack-github-action@v1.23.0
+        name: Threaded slack notification for version comparison
+        if: ${{ env.ENVIRONMENT == 'production' }} 
+        id: slack_threaded_version
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Changelog: \n ${{ env.JSON_CHANGELOG_CONTENT }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}

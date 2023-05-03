@@ -1,0 +1,290 @@
+name: Cron Merged PR to main branch
+
+on:
+  workflow_call:
+    inputs:
+        image_repo:
+          required: true
+          type: string
+          description: "Your container registry repository - like eu.gcr.io/ultimateai-169214"
+        app_squad:
+          required: true
+          type: string
+          description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
+        github_email:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this email"
+        github_user:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this user"
+        k8s_manifests_repo:
+          required: true
+          type: string
+          description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+        update_file:
+          required: false
+          type: string
+          description: "The file with the version you want to update"
+        changelog:
+          required: false
+          type: boolean
+          description: "Update changelog"
+        initial_release:
+          required: false
+          type: string
+          description: "In case no release is present in the repo, which one should be the base release from which to bump - defaults to 0.0.0"
+          default: "0.0.1"
+        automatic_deployment_to:
+          required: false
+          type: string
+          description: "To which env you want to automatically deploy - defaults to staging"
+          default: "staging"
+        npm_install_command:
+          required: false
+          type: string
+          description: "Command for npm i, defaults to - npm i"
+          default: "npm i"
+        node_version:
+          required: false
+          type: string
+          default: "16.x"
+          description: "Node version used in the pipeline, defaults to 16.x"
+        test_command:
+          required: false
+          type: string
+          description: "Command for running your tests, defaults to - npm run test"
+          default: "npm run test"
+        build_command:
+          required: false
+          type: string
+          description: "Command for running npm run build, defaults to - npm run build"
+          default: "npm run build"
+        lint_command:
+          required: false
+          type: string
+          description: "Command for running npm run lint, defaults to - npm run lint"
+          default: "npm run lint"
+        
+        
+
+env:
+  IMAGE_REPO: ${{ inputs.image_repo }}
+  APP_SQUAD: ${{ inputs.app_squad }}
+  GITHUB_EMAIL: ${{ inputs.github_email }}
+  GITHUB_USER: ${{ inputs.github_user }}
+  K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
+  UPDATE_FILE: ${{ inputs.update_file }}
+  CHANGELOG: ${{ inputs.changelog }}
+  INITIAL_RELEASE: ${{ inputs.initial_release }}
+  AUTOMATIC_DEPLOYMENT_TO: ${{ inputs.automatic_deployment_to }}
+  NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
+  NODE_VERSION: ${{ inputs.node_version }}
+  TEST_COMMAND: ${{ inputs.test_command }}
+  BUILD_COMMAND: ${{ inputs.build_command }}
+  LINT_COMMAND: ${{ inputs.lint_command }}
+
+jobs:
+  bump-release:
+    name: Bump release
+    if: github.event.pull_request.merged == true
+    runs-on: preemptible-runners
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+
+      - name: Bump version and release
+        id: bump_version
+        uses: ultimateai/bump-action@v0.5.8
+        with:
+          github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+          infer_bump_from_commit: true
+          update_file: ${{ env.UPDATE_FILE }}
+          changelog: ${{ env.CHANGELOG }}
+          initial_release: ${{ env.INITIAL_RELEASE }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+       ### Authentings with Google Cloud because of artifact registry ###
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
+          service_account: ${{ secrets.GSA_GCR_EMAIL }}
+
+      - name: Update package.json after bumping
+        if: ${{ env.UPDATE_FILE == 'package.json'}}
+        run: |-
+          git fetch;git pull
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login -- --credential-config .npmrc
+          fi
+          npm install --package-lock-only --no-audit
+          git config --local user.email $GITHUB_EMAIL
+          git config --local user.name $GITHUB_USER
+          git add package-lock.json
+          git commit -m "Sync package-lock.json to ${BUMPED_VERSION}"
+          git push ${REMOTE_REPO} HEAD:main
+        env: 
+          BUMPED_VERSION: ${{ steps.bump_version.outputs.next_version }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
+
+
+  push-and-deploy:
+    name: Push image with updated tag and deploy to pre environments
+    runs-on: preemptible-runners
+    needs: bump-release
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: main
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - id: "image_name"
+        name: "Get repo name and update IMAGE_NAME"
+        run: |- 
+          IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+      
+
+      - name: Get environment.env file for updating k8s-manifest repo
+        run: |-
+          if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"staging"* ]]; then
+            cat "deployment_envs/stage.env" > $HOME/staging-envfile.env
+          fi
+          if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"development"* ]]; then
+            cat "deployment_envs/dev.env" > $HOME/development-envfile.env
+          fi
+          if [[ -f "deployment_envs/common.env" ]]; then
+            echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+      - id: fetch_latest_release
+        uses: ultimateai/fetch-latest-release@2.1.1
+        with:
+          github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+
+
+      ### Authentings with Google Cloud to Push Image to GCR ###
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
+          service_account: ${{ secrets.GSA_GCR_EMAIL }}
+
+      - name: "Authenticating docker to push to gcr"
+        uses: docker/login-action@v2.1.0
+        with:
+          registry: "eu.gcr.io"
+          username: "oauth2accesstoken"
+          password: "${{ steps.auth.outputs.access_token }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: Install npm Packages
+        run: |
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login -- --credential-config .npmrc
+          fi
+          $NPM_INSTALL_COMMAND
+      
+      - name: Lint
+        if: ${{ env.LINT_COMMAND }}
+        run: $LINT_COMMAND
+          
+      - name: Test
+        if: ${{ env.TEST_COMMAND }}
+        run: $TEST_COMMAND
+
+      - name: build
+        if: ${{ env.BUILD_COMMAND }}
+        run: $BUILD_COMMAND
+      
+      - name: Docker build
+        run: |-
+          docker build -t "${IMAGE_NAME}:${TAGS}" .
+        shell: bash
+        env:
+          TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+
+      - name: Docker push
+        run: |-
+          docker push "${IMAGE_NAME}:${TAGS}"
+        shell: bash
+        env:
+          TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+
+      ##Automatic deploy to development on merged PR to main
+      - name: "Checkout k8s manifests"
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.K8S_MANIFESTS_REPO }}
+          token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+          
+      - name: Update the Image tags for Preproduction Environment
+        run: |-
+          if [[ $K8S_ENV_NAME == *","* ]]; then
+            echo "Deploying in multiple environments: $K8S_ENV_NAME"
+            IFS=',' read -r -a envs <<< "$K8S_ENV_NAME"
+            for env in "${envs[@]}"
+            do
+              if [[ $env == "development" || $env == "staging"  ]]; then
+                  echo "Deploying ${{ github.event.repository.name }} at $env "        
+                  cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$env
+                  FILE_ENV=$(ls | grep ".env");cat $HOME/$env-envfile.env > $FILE_ENV
+                  kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+                  cat kustomization.yaml
+                  git config --local user.email $GITHUB_EMAIL
+                  git config --local user.name $GITHUB_USER
+                  git commit -m "update $env image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${IMAGE_NAME}:${TAGS} is already deployed to $env" >> $GITHUB_STEP_SUMMARY
+                  git push ${REMOTE_REPO} HEAD:main --force
+                  cd ../../../../
+              else
+                echo "You want to deploy automatically to $env, which is not development nor staging. This is not allowed."
+                exit 1
+              fi
+            done
+          else
+            if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then     
+              cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
+              FILE_ENV=$(ls | grep ".env");cat $HOME/${K8S_ENV_NAME}-envfile.env > $FILE_ENV
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              cat kustomization.yaml
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${IMAGE_NAME}:${TAGS} is already deployed to ${K8S_ENV_NAME}" >> $GITHUB_STEP_SUMMARY
+              git push ${REMOTE_REPO} HEAD:main --force
+            else
+              echo "You want to deploy automatically to ${K8S_ENV_NAME}, which is not development nor staging. This is not allowed."
+              exit 1
+            fi
+          fi
+        env:
+          TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          K8S_ENV_NAME: ${{ env.AUTOMATIC_DEPLOYMENT_TO }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}      
