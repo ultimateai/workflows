@@ -1,0 +1,194 @@
+name: Deploy branch to dev
+
+on:
+  workflow_call:
+    inputs:
+        image_repo:
+          required: true
+          type: string
+          description: "Your container registry repository - like eu.gcr.io/ultimateai-169214"
+        app_squad:
+          required: true
+          type: string
+          description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
+        github_email:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this email"
+        github_user:
+          required: true
+          type: string
+          description: "Automatic CI/CD commits will be done by this user"
+        k8s_manifests_repo:
+          required: true
+          type: string
+          description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+        branch_name:
+          required: true 
+          type: string
+          description: "Which branch you want to build and deploy to dev"
+        test_command:
+          required: false
+          type: string
+          description: "Command for running your tests, defaults to - npm run test"
+          default: "npm run test"
+        build_command:
+          required: false
+          type: string
+          description: "Command for building your app, defaults to - npm run build"
+          default: "npm run build"
+        lint_command:
+          required: false
+          type: string
+          description: "Command for linting your app, defaults to - npm run lint"
+          default: "npm run lint"
+        npm_install_command:
+          required: false
+          type: string
+          description: "Command for npm i, defaults to - npm i"
+          default: "npm i"
+        node_version:
+          required: false
+          type: string
+          default: "16.x"
+          description: "Node version used in the pipeline, defaults to 16.x"
+
+        
+        
+
+
+env:
+  IMAGE_REPO: ${{ inputs.image_repo }}
+  APP_SQUAD: ${{ inputs.app_squad }}
+  GITHUB_EMAIL: ${{ inputs.github_email }}
+  GITHUB_USER: ${{ inputs.github_user }}
+  K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
+  BRANCH_NAME: ${{ inputs.branch_name }}
+  TEST_COMMAND: ${{ inputs.test_command }}
+  BUILD_COMMAND: ${{ inputs.build_command }}
+  LINT_COMMAND: ${{ inputs.lint_command }}
+  NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
+  NODE_VERSION: ${{ inputs.node_version }}
+
+
+jobs:
+  deploy:
+    name: Update k8s manifest repo for development deployment
+    runs-on: preemptible-runners
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: Checkout to selected branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - id: "image_name"
+        name: "Get repo name and update IMAGE_NAME"
+        run: |- 
+          IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Get dev.env file
+        run: |-
+          cat "deployment_envs/dev.env" > $HOME/dev-copy.env
+
+      - id: get_image_tag
+        name: Get image tag from branch name and commitId
+        run: |- 
+          FIXED_BRANCH_NAME=$(echo "$BRANCH_NAME" | tr / -)
+          TAG=$FIXED_BRANCH_NAME-$(git rev-parse --short HEAD)
+          echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Export Home
+        run: echo "HOME=/root" >> $GITHUB_ENV
+
+      - name: Cache dependencies
+        uses: actions/cache@v3.2.2
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-
+
+       ### Authentings with Google Cloud to Push Image to GCR ###
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v0"
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
+          service_account: ${{ secrets.GSA_GCR_EMAIL }}
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v0"
+
+      - name: Install npm Packages
+        run: |
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login -- --credential-config .npmrc
+          fi
+          $NPM_INSTALL_COMMAND
+      
+      - name: Lint
+        if: ${{ env.LINT_COMMAND }}
+        run: $LINT_COMMAND
+
+      - name: Test
+        if: ${{ env.TEST_COMMAND }}
+        run: $TEST_COMMAND
+
+      - name: build
+        if: ${{ env.BUILD_COMMAND }}
+        run: $BUILD_COMMAND
+
+      - name: "Authenticating docker to push to gcr"
+        uses: docker/login-action@v2.1.0
+        with:
+          registry: "eu.gcr.io"
+          username: "oauth2accesstoken"
+          password: "${{ steps.auth.outputs.access_token }}"
+
+      - name: Docker build
+        run: |-
+          docker build -t "${IMAGE_NAME}:${TAGS}" .
+        shell: bash
+        env:
+          TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+
+      - name: Docker push
+        run: |-
+          docker push "${IMAGE_NAME}:${TAGS}"
+        shell: bash
+        env:
+          TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+
+      ##Deploy to dev
+      - name: "Checkout k8s manifests"
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.K8S_MANIFESTS_REPO }}
+          token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+          
+      - name: Update the Image tags for Dev Environment
+        run: |-
+            cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
+            cat $HOME/dev-copy.env > dev.env
+            kustomize edit set image app=${IMAGE_NAME}:${TAG}
+            cat kustomization.yaml
+            git config --local user.email $GITHUB_EMAIL
+            git config --local user.name $GITHUB_USER
+            git commit -m "update image to ${IMAGE_NAME}:${TAG}" -a
+            git push ${REMOTE_REPO} HEAD:main --force 
+        env:
+          TAG: ${{ steps.get_image_tag.outputs.image_tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          K8S_ENV_NAME: development
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
