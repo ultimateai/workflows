@@ -291,6 +291,7 @@ jobs:
     with:
       e2e_repo: ultimateai/e2e-tests
       projects: '["chromium"]'
+      e2e_bucket_name: "ultimate-e2e-artifacts"
     secrets: inherit
 
   e2e-tests-result-slack:
