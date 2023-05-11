@@ -80,6 +80,9 @@ jobs:
     outputs:
       environment: ${{ env.ENVIRONMENT }}
       run_e2e_tests: ${{ env.RUN_E2E_TESTS }}
+      e2e_repo: ${{ env.E2E_REPO }}
+      e2e_projects: ${{ env.E2E_PROJECTS }}
+      e2e_bucket_name: ${{ env.E2E_BUCKET_NAME }}
     permissions:
       contents: "read"
       id-token: "write"
@@ -304,9 +307,9 @@ jobs:
     name: run end to end tests
     uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@feat/artifact-in-bucket
     with:
-      e2e_repo: ${{ env.E2E_REPO }}
-      projects: ${{ env.E2E_PROJECTS }}
-      e2e_bucket_name: ${{ env.E2E_BUCKET_NAME }}
+      e2e_repo: ${{ needs.deploy.outputs.e2e_repo }}
+      projects: ${{ needs.deploy.outputs.e2e_projects }}
+      e2e_bucket_name: ${{ needs.deploy.outputs.E2E_BUCKET_NAME }}
     secrets: inherit
 
   e2e-tests-result-slack:
