@@ -41,6 +41,18 @@ on:
           type: string
           default: "#plt-239"
           description: "Slack channel ID where you want your notifications"
+        e2e_repo:
+          required: true
+          type: string
+          description: "Repository containing your e2e tests"
+        e2e_projects:
+          required: true
+          type: string
+          description: "Projects for matrix in e2e sharding - chromium, firefox..."
+        e2e_bucket_name:
+          required: true
+          type: string
+          description: "Bucket in which to store e2e results"
 
         
         
@@ -56,6 +68,9 @@ env:
   RUN_E2E_TESTS: ${{ inputs.run_e2e_tests }}
   APP_NAMES: ${{ inputs.app_names }}
   SLACK_CHANNEL_ID: ${{ inputs.slack_channel_id }}
+  E2E_REPO: ${{ inputs.e2e_repo }}
+  E2E_PROJECTS: ${{ inputs.e2e_projects }}
+  E2E_BUCKET_NAME: ${{ inputs.e2e_bucket_name }}
 
 
 jobs:
@@ -65,6 +80,9 @@ jobs:
     outputs:
       environment: ${{ env.ENVIRONMENT }}
       run_e2e_tests: ${{ env.RUN_E2E_TESTS }}
+      e2e_repo: ${{ env.E2E_REPO }}
+      e2e_projects: ${{ env.E2E_PROJECTS }}
+      e2e_bucket_name: ${{ env.E2E_BUCKET_NAME }}
     permissions:
       contents: "read"
       id-token: "write"
@@ -287,10 +305,11 @@ jobs:
     needs: deploy
     if: ${{ needs.deploy.outputs.environment == 'staging' && needs.deploy.outputs.run_e2e_tests == 'true' }}
     name: run end to end tests
-    uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@0.1.0
+    uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@0.2.0
     with:
-      e2e_repo: ultimateai/e2e-tests
-      projects: '["chromium"]'
+      e2e_repo: ${{ needs.deploy.outputs.e2e_repo }}
+      projects: ${{ needs.deploy.outputs.e2e_projects }}
+      e2e_bucket_name: ${{ needs.deploy.outputs.E2E_BUCKET_NAME }}
     secrets: inherit
 
   e2e-tests-result-slack:
@@ -315,7 +334,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} - with e2e results inside!"
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} - with E2E results inside!"
                   }
                 }
               ]
@@ -331,20 +350,21 @@ jobs:
           channel-id: ${{ env.SLACK_CHANNEL_ID }}
           payload: |-
             {
-              "text": "e2e failed",
+              "text": "E2E failed",
               "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":x: E2e failed! Please check your tests result at https://github.com/ultimateai/${{ github.event.repository.name }}/actions/workflows/manual-deploy.yml"
+                    "text": ":x: E2E failed! Please check your tests result at ${{ env.BUCKET_LINK }}"
                   }
                 }
               ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          BUCKET_LINK: ${{ needs.run-e2e-test.outputs.bucket_link }}
 
       - name: Slack Notification for e2e success
         if: ${{ contains(needs.run-e2e-test.result, 'success') }}
@@ -361,13 +381,14 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":white_check_mark: E2e worked! You can see more info at Please check your tests result at https://github.com/ultimateai/${{ github.event.repository.name }}/actions/workflows/manual-deploy.yml"
+                    "text": ":white_check_mark: E2E worked! You can see more info at ${{ env.BUCKET_LINK }}"
                   }
                 }
               ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          BUCKET_LINK: ${{ needs.run-e2e-test.outputs.bucket_link }}
 
         
 
