@@ -316,7 +316,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} - with e2e results inside!"
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} - with E2E results inside!"
                   }
                 }
               ]
@@ -332,14 +332,14 @@ jobs:
           channel-id: ${{ env.SLACK_CHANNEL_ID }}
           payload: |-
             {
-              "text": "e2e failed",
+              "text": "E2E failed",
               "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":x: E2e failed! Please check your tests result at $BUCKET_LINK"
+                    "text": ":x: E2E failed! Please check your tests result at ${{ env.BUCKET_LINK }}"
                   }
                 }
               ]
@@ -363,7 +363,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":white_check_mark: E2e worked! You can see more info at $BUCKET_LINK"
+                    "text": ":white_check_mark: E2E worked! You can see more info at ${{ env.BUCKET_LINK }}"
                   }
                 }
               ]
