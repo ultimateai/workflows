@@ -305,7 +305,7 @@ jobs:
     needs: deploy
     if: ${{ needs.deploy.outputs.environment == 'staging' && needs.deploy.outputs.run_e2e_tests == 'true' }}
     name: run end to end tests
-    uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@feat/artifact-in-bucket
+    uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@0.2.0
     with:
       e2e_repo: ${{ needs.deploy.outputs.e2e_repo }}
       projects: ${{ needs.deploy.outputs.e2e_projects }}
