@@ -166,7 +166,7 @@ jobs:
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
       
 
-      - name: Get environment.env file for updating k8s-manifest repo
+      - name: Get environment.env file and scheduler for updating k8s-manifest repo
         run: |-
           if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"staging"* ]]; then
             cat "deployment_envs/stage.env" > $HOME/staging-envfile.env
