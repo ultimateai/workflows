@@ -95,7 +95,7 @@ jobs:
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
-      - name: Get dev.env file
+      - name: Get .env file and scheduler
         run: |-
           cat "deployment_envs/dev.env" > $HOME/dev-copy.env
           cat "deployment_schedules/dev > $HOME/dev-scheduler-copy"
@@ -184,7 +184,7 @@ jobs:
             cat $HOME/dev-copy.env > dev.env
             scheduler=$(cat $HOME/dev-scheduler-copy)
             echo "TESTING SCHEDULER $scheduler"
-            yq ".spec.schedule = \"$scheduler\"" -i cronjob.yml
+            yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
             kustomize edit set image app=${IMAGE_NAME}:${TAG}
             cat kustomization.yaml
             git config --local user.email $GITHUB_EMAIL
