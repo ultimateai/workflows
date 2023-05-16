@@ -98,7 +98,7 @@ jobs:
       - name: Get .env file and scheduler
         run: |-
           cat "deployment_envs/dev.env" > $HOME/dev-copy.env
-          cat "deployment_schedules/dev > $HOME/dev-scheduler-copy"
+          cat "deployment_schedules/dev" > $HOME/dev-scheduler-copy
 
       - id: get_image_tag
         name: Get image tag from branch name and commitId
