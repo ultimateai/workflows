@@ -97,12 +97,6 @@ jobs:
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
       
-      - id: "user_name"
-        name: "get full user name from github API"
-        run: |- 
-          user_full_name=$(curl https://api.github.com/users/mojombo | jq ".name")
-          echo $user_full_name
-      
       - id: "app_names"
         name: "Get app_names if necessary"
         run: |- 
@@ -254,6 +248,18 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
           SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
+      
+      - id: "user_name"
+        name: "get full user name from github API"
+        run: |- 
+          echo "https://api.github.com/users/${{ github.actor }}"
+          user_full_name=$(curl https://api.github.com/users/${{ github.actor }} | jq ".name")
+          echo $user_full_name
+          if [[ $user_full_name == "null" ]]; then
+            echo "user_full_name is null"
+            user_full_name=${{ github.actor }}
+          fi
+          echo "user_full_name=$user_full_name" >> $GITHUB_OUTPUT
 
       - uses: slackapi/slack-github-action@v1.23.0
         name: Slack notification
@@ -269,7 +275,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}`"
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ env.USER_NAME }}, `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}`"
                   }
                 }
               ]
@@ -280,6 +286,7 @@ jobs:
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+          USER_NAME: ${{ steps.user_name.outputs.user_name }}
 
       - uses: slackapi/slack-github-action@v1.23.0
         name: Threaded slack notification for version comparison
@@ -305,6 +312,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}
+          USER_NAME: ${{ steps.user_name.outputs.user_name }}
       
 
   run-e2e-test:
