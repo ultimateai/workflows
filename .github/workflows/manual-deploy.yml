@@ -333,6 +333,18 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
+      - id: "user_name"
+        name: "get full user name from github API"
+        run: |- 
+          echo "https://api.github.com/users/${{ github.actor }}"
+          user_full_name=$(curl https://api.github.com/users/${{ github.actor }} | jq ".name" | tr -d '"')
+          echo $user_full_name
+          if [[ $user_full_name == "null" ]]; then
+            echo "user_full_name is null"
+            user_full_name=${{ github.actor }}
+          fi
+          echo "user_full_name=$user_full_name" >> $GITHUB_OUTPUT
+
       - uses: slackapi/slack-github-action@v1.23.0
         name: Slack notification
         id: slack_notif_e2e
@@ -346,13 +358,14 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} - with E2E results inside!"
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ env.USER_NAME }} - with E2E results inside!"
                   }
                 }
               ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          USER_NAME: ${{ steps.user_name.outputs.user_full_name }}
 
       - name: Slack Notification for e2e failure
         if: ${{ contains(needs.run-e2e-test.result, 'failure') }}
