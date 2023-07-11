@@ -286,7 +286,7 @@ jobs:
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-          USER_NAME: ${{ steps.user_name.outputs.user_name }}
+          USER_NAME: ${{ steps.user_name.outputs.user_full_name }}
 
       - uses: slackapi/slack-github-action@v1.23.0
         name: Threaded slack notification for version comparison
@@ -311,9 +311,7 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}
-          USER_NAME: ${{ steps.user_name.outputs.user_name }}
-      
+          JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}      
 
   run-e2e-test:
     needs: deploy
