@@ -253,7 +253,7 @@ jobs:
         name: "get full user name from github API"
         run: |- 
           echo "https://api.github.com/users/${{ github.actor }}"
-          user_full_name=$(curl https://api.github.com/users/${{ github.actor }} | jq ".name")
+          user_full_name=$(curl https://api.github.com/users/${{ github.actor }} | jq ".name" | tr -d '"')
           echo $user_full_name
           if [[ $user_full_name == "null" ]]; then
             echo "user_full_name is null"
