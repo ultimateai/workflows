@@ -220,7 +220,7 @@ jobs:
         with:
           key: ${{ secrets.BB_SSH_KEY }}
           name: id_rsa
-          known_hosts: bitbucket.org
+          known_hosts: bitbucket.org/site/ssh
           if_key_exists: ignore
 
       ### Authentings with Google Cloud to Push Image to GCR ###
