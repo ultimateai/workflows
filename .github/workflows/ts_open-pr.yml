@@ -39,7 +39,7 @@ env:
 
 jobs:
   test_build:
-    runs-on: custom-poc-runner
+    runs-on: custom-poc-runner-test
     name: Test code and build image 
     permissions:
       contents: "read"
