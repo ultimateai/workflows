@@ -337,8 +337,8 @@ jobs:
         if: ${{ (env.ENVIRONMENT != 'staging') }}
         name: Make sure this is only executed on staging deployment
         run: |-
-          echo "Test can only be launched on staging environment"
-          echo "Test can only be launched on staging environment" >> $GITHUB_STEP_SUMMARY
+          echo "Tests can only be launched on staging environment"
+          echo "Tests can only be launched on staging environment" >> $GITHUB_STEP_SUMMARY
           exit 1
           
       - id: "user_name"
