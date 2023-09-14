@@ -312,6 +312,12 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}
+      
+      - id: "get_files_delete_me"
+        name: "Delete me pls"
+        run: |- 
+          pwd
+          ls -la
 
       - uses: MeilCli/slack-upload-file@v3
         name: Upload kustomization.yaml to slack
