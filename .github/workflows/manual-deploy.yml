@@ -311,7 +311,19 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}      
+          JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}
+
+      - uses: MeilCli/slack-upload-file@v3
+        with:
+          slack_token: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          channel_id: ${{ env.SLACK_CHANNEL_ID }}
+          file_path: '$APP_SQUAD/$SINGLE_APP_NAME/overlay/staging/kustomization.yaml'
+          initial_comment: 'post by slack-upload-file'
+          thread_ts: '${{ steps.slack_notif.outputs.thread_ts }}'
+        env:
+          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
+          SLACK_CHANNEL_ID: ${{ env.SLACK_CHANNEL_ID }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
 
   run-e2e-test:
     needs: deploy
