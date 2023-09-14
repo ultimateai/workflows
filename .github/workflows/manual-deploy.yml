@@ -318,6 +318,9 @@ jobs:
         run: |- 
           pwd
           ls -la
+          touch delete_me.txt
+          echo "Hola soy un fichero borrame pls" >> delete_me.txt
+          ls -la
 
       - uses: MeilCli/slack-upload-file@v3
         name: Upload kustomization.yaml to slack
@@ -325,7 +328,7 @@ jobs:
         with:
           slack_token: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           channel_id: ${{ env.SLACK_CHANNEL_ID }}
-          file_path: '$APP_SQUAD/$SINGLE_APP_NAME/overlay/staging/kustomization.yaml'
+          file_path: 'delete_me.txt'
           initial_comment: 'post by slack-upload-file'
           thread_ts: '${{ steps.slack_notif.outputs.thread_ts }}'
         env:
