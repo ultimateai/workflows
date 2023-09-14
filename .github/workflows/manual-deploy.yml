@@ -314,6 +314,8 @@ jobs:
           JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}
 
       - uses: MeilCli/slack-upload-file@v3
+        name: Upload kustomization.yaml to slack
+        id: slack_upload_file
         with:
           slack_token: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
           channel_id: ${{ env.SLACK_CHANNEL_ID }}
