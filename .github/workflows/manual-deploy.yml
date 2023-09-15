@@ -316,11 +316,10 @@ jobs:
       - id: "get_files_delete_me"
         name: "Delete me pls"
         run: |- 
-          pwd
-          ls -la
           touch delete_me.txt
           echo "Hola soy un fichero borrame pls" >> delete_me.txt
           ls -la
+          cat delete_me.txt
 
       - uses: MeilCli/slack-upload-file@v3
         name: Upload kustomization.yaml to slack
@@ -332,7 +331,6 @@ jobs:
           initial_comment: 'post by slack-upload-file'
           thread_ts: '${{ steps.slack_notif.outputs.thread_ts }}'
         env:
-          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
           SLACK_CHANNEL_ID: ${{ env.SLACK_CHANNEL_ID }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
 
