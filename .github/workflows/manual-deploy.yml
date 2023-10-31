@@ -333,6 +333,14 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
+      - id: check_environment
+        if: ${{ (env.ENVIRONMENT != 'staging') }}
+        name: Make sure this is only executed on staging deployment
+        run: |-
+          echo "Tests can only be launched on staging environment"
+          echo "Tests can only be launched on staging environment" >> $GITHUB_STEP_SUMMARY
+          exit 1
+          
       - id: "user_name"
         name: "get full user name from github API"
         run: |- 
