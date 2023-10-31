@@ -157,28 +157,28 @@ jobs:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
       
-      - name: Check if version is already deployed in stage, if trying to deploy in prod
-        if: ${{ (env.ENVIRONMENT == 'production') }}
-        run: |-
-          if [[ "${SINGLE_APP_NAME}" ]]; then
-              STAGE_VERSION=$(cat $APP_SQUAD/$SINGLE_APP_NAME/overlay/staging/kustomization.yaml | yq .images.0.newTag)
-              if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
-                echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
-                echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
-                exit 1
-              fi
-          else
-            STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
-            if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
-              echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
-              echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
-              exit 1
-            fi
-          fi
-        env:
-          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
-          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
+      # - name: Check if version is already deployed in stage, if trying to deploy in prod
+      #   if: ${{ (env.ENVIRONMENT == 'production') }}
+      #   run: |-
+      #     if [[ "${SINGLE_APP_NAME}" ]]; then
+      #         STAGE_VERSION=$(cat $APP_SQUAD/$SINGLE_APP_NAME/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+      #         if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
+      #           echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
+      #           echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
+      #           exit 1
+      #         fi
+      #     else
+      #       STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+      #       if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
+      #         echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
+      #         echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
+      #         exit 1
+      #       fi
+      #     fi
+      #   env:
+      #     TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+      #     APP_NAMES: ${{ steps.app_names.outputs.app_names }}
+      #     SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
 
       - name: Check old deployed version in env to improve slack message
         id: get_old_version
