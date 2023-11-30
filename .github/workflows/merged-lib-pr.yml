@@ -54,6 +54,10 @@ on:
           type: string
           description: "Command for publishing the artifact, defaults to - npm publish"
           default: "npm publish"
+        npm_version:
+          required: false
+          type: string
+          description: "Npm version used in the pipeline, defaults to LTS version"
 
 env:
   IMAGE_REPO: ${{ inputs.image_repo }}
@@ -99,6 +103,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: npm install
+        if: ${{ env.NPM_VERSION }}
+        run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
+
       - name: Update package.json after bumping
         if: ${{ env.UPDATE_FILE == 'package.json'}}
         run: |-
@@ -125,11 +133,15 @@ jobs:
         with:
           fetch-depth: 0
           ref: main
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
+
+      - name: npm install
+        if: ${{ env.NPM_VERSION }}
+        run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
 
       - id: fetch_latest_release
         uses: ultimateai/fetch-latest-release@2.1.1
@@ -167,7 +179,7 @@ jobs:
             npm run artifactregistry-login -- --credential-config .npmrc
           fi
           $NPM_INSTALL_COMMAND
-      
+
       - name: Lint
         if: ${{ env.LINT_COMMAND }}
         run: $LINT_COMMAND
@@ -179,7 +191,7 @@ jobs:
       - name: build
         if: ${{ env.BUILD_COMMAND }}
         run: $BUILD_COMMAND
-        
+
       - name: Upload NPM Package to Artifact Registry
         if: ${{ env.PUBLISH_COMMAND }}
         run: $PUBLISH_COMMAND

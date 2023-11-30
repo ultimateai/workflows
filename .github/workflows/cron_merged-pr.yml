@@ -66,8 +66,12 @@ on:
           type: string
           description: "Command for running npm run lint, defaults to - npm run lint"
           default: "npm run lint"
-        
-        
+        npm_version:
+          required: false
+          type: string
+          description: "Npm version used in the pipeline, defaults to LTS version"
+
+
 
 env:
   IMAGE_REPO: ${{ inputs.image_repo }}
@@ -108,11 +112,15 @@ jobs:
           update_file: ${{ env.UPDATE_FILE }}
           changelog: ${{ env.CHANGELOG }}
           initial_release: ${{ env.INITIAL_RELEASE }}
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
+
+      - name: npm install
+        if: ${{ env.NPM_VERSION }}
+        run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
 
        ### Authentings with Google Cloud because of artifact registry ###
       - id: "auth"
@@ -136,7 +144,7 @@ jobs:
           git add package-lock.json
           git commit -m "Sync package-lock.json to ${BUMPED_VERSION}"
           git push ${REMOTE_REPO} HEAD:main
-        env: 
+        env:
           BUMPED_VERSION: ${{ steps.bump_version.outputs.next_version }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
 
@@ -153,18 +161,22 @@ jobs:
         with:
           fetch-depth: 0
           ref: main
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: npm install
+        if: ${{ env.NPM_VERSION }}
+        run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
+
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"
-        run: |- 
+        run: |-
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-      
+
 
       - name: Get environment.env file and scheduler for updating k8s-manifest repo
         run: |-
@@ -179,7 +191,7 @@ jobs:
           if [[ -f "deployment_envs/common.env" ]]; then
             echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
       - id: fetch_latest_release
         uses: ultimateai/fetch-latest-release@2.1.1
         with:
@@ -211,11 +223,11 @@ jobs:
             npm run artifactregistry-login -- --credential-config .npmrc
           fi
           $NPM_INSTALL_COMMAND
-      
+
       - name: Lint
         if: ${{ env.LINT_COMMAND }}
         run: $LINT_COMMAND
-          
+
       - name: Test
         if: ${{ env.TEST_COMMAND }}
         run: $TEST_COMMAND
@@ -223,7 +235,7 @@ jobs:
       - name: build
         if: ${{ env.BUILD_COMMAND }}
         run: $BUILD_COMMAND
-      
+
       - name: Docker build
         run: |-
           docker build -t "${IMAGE_NAME}:${TAGS}" .
@@ -246,7 +258,7 @@ jobs:
         with:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
-          
+
       - name: Update the Image tags for Preproduction Environment
         run: |-
           if [[ $K8S_ENV_NAME == *","* ]]; then
@@ -255,7 +267,7 @@ jobs:
             for env in "${envs[@]}"
             do
               if [[ $env == "development" || $env == "staging"  ]]; then
-                  echo "Deploying ${{ github.event.repository.name }} at $env "        
+                  echo "Deploying ${{ github.event.repository.name }} at $env "
                   cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$env
                   FILE_ENV=$(ls | grep ".env");cat $HOME/$env-envfile.env > $FILE_ENV
                   kustomize edit set image app=${IMAGE_NAME}:${TAGS}
@@ -273,7 +285,7 @@ jobs:
               fi
             done
           else
-            if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then     
+            if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then
               cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
               FILE_ENV=$(ls | grep ".env");cat $HOME/${K8S_ENV_NAME}-envfile.env > $FILE_ENV
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
@@ -293,4 +305,4 @@ jobs:
           TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           K8S_ENV_NAME: ${{ env.AUTOMATIC_DEPLOYMENT_TO }}
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}      
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}

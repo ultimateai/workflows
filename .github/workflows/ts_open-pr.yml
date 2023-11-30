@@ -31,7 +31,7 @@ on:
       npm_version:
         required: false
         type: string
-        description: "Npm version used in the pipeline, defaults to 10"
+        description: "Npm version used in the pipeline, defaults to LTS version"
 
 env:
   TEST_COMMAND: ${{ inputs.test_command }}
@@ -45,7 +45,7 @@ env:
 jobs:
   test_build:
     runs-on: preemptible-runners
-    name: Test code and build image 
+    name: Test code and build image
     permissions:
       contents: "read"
       id-token: "write"
@@ -54,7 +54,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -100,11 +100,11 @@ jobs:
             npm run artifactregistry-login -- --credential-config .npmrc
           fi
           $NPM_INSTALL_COMMAND
-      
+
       - name: Lint
         if: ${{ env.LINT_COMMAND }}
         run: $LINT_COMMAND
-          
+
       - name: Test
         if: ${{ env.TEST_COMMAND }}
         run: $TEST_COMMAND
