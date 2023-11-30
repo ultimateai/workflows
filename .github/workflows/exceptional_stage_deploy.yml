@@ -78,6 +78,7 @@ env:
   APP_NAMES: ${{ inputs.app_names }}
   NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
   NODE_VERSION: ${{ inputs.node_version }}
+  NPM_VERSION: ${{ inputs.npm_version }}
 
 
 jobs:
@@ -98,15 +99,15 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: npm install
+        if: ${{ env.NPM_VERSION }}
+        run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
+
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"
         run: |-
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-
-      - name: npm install
-        if: ${{ env.NPM_VERSION }}
-        run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
 
       - id: "app_names"
         name: "Get app_names if necessary"

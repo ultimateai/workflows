@@ -73,6 +73,7 @@ env:
   LINT_COMMAND: ${{ inputs.lint_command }}
   NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
   NODE_VERSION: ${{ inputs.node_version }}
+  NPM_VERSION: ${{ inputs.npm_version }}
 
 
 jobs:

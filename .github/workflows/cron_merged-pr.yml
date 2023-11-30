@@ -88,6 +88,7 @@ env:
   TEST_COMMAND: ${{ inputs.test_command }}
   BUILD_COMMAND: ${{ inputs.build_command }}
   LINT_COMMAND: ${{ inputs.lint_command }}
+  NPM_VERSION: ${{ inputs.npm_version }}
 
 jobs:
   bump-release:
