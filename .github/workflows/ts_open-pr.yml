@@ -50,6 +50,9 @@ jobs:
         with:
           fetch-depth: 0
       
+      - name: test
+        run: npm run test
+      
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
