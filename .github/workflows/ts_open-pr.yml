@@ -26,8 +26,12 @@ on:
       node_version:
         required: false
         type: string
-        default: "16.x"
-        description: "Node version used in the pipeline, defaults to 16.x"
+        default: "18.x"
+        description: "Node version used in the pipeline, defaults to 18.x"
+      npm_version:
+        required: false
+        type: string
+        description: "Npm version used in the pipeline, defaults to 10"
 
 env:
   TEST_COMMAND: ${{ inputs.test_command }}
@@ -35,6 +39,7 @@ env:
   LINT_COMMAND: ${{ inputs.lint_command }}
   NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
   NODE_VERSION: ${{ inputs.node_version }}
+  NPM_VERSION: ${{ inputs.npm_version }}
 
 
 jobs:
@@ -51,9 +56,13 @@ jobs:
           fetch-depth: 0
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+
+      - name: npm install
+        if: ${{ env.NPM_VERSION }}
+        run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
 
       - name: Export Home
         run: echo "HOME=/root" >> $GITHUB_ENV
