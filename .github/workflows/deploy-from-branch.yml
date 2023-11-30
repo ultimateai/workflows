@@ -24,7 +24,7 @@ on:
           type: string
           description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
         branch_name:
-          required: true 
+          required: true
           type: string
           description: "Which branch you want to build and deploy to dev"
         test_command:
@@ -56,9 +56,13 @@ on:
           type: string
           default: "16.x"
           description: "Node version used in the pipeline, defaults to 16.x"
+        npm_version:
+          required: false
+          type: string
+          description: "Npm version used in the pipeline, defaults to LTS version"
 
-        
-        
+
+
 
 
 env:
@@ -93,16 +97,20 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
-          
+
+      - name: npm install
+        if: ${{ env.NPM_VERSION }}
+        run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
+
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"
-        run: |- 
+        run: |-
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
       - id: "app_names"
         name: "Get app_names if necessary"
-        run: |- 
+        run: |-
           if [[ -z "${APP_NAMES}" ]]; then
             APP_NAMES=${{ github.event.repository.name }}
           fi
@@ -122,7 +130,7 @@ jobs:
 
       - id: get_image_tag
         name: Get image tag from branch name and commitId
-        run: |- 
+        run: |-
           FIXED_BRANCH_NAME=$(echo "$BRANCH_NAME" | tr / -)
           TAG=$FIXED_BRANCH_NAME-$(git rev-parse --short HEAD)
           echo "image_tag=$TAG" >> $GITHUB_OUTPUT
@@ -164,7 +172,7 @@ jobs:
             npm run artifactregistry-login -- --credential-config .npmrc
           fi
           $NPM_INSTALL_COMMAND
-      
+
       - name: Lint
         if: ${{ env.LINT_COMMAND }}
         run: $LINT_COMMAND
@@ -208,7 +216,7 @@ jobs:
         with:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
-          
+
       - name: Update the Image tags for Dev Environment
         run: |-
             if [[ $APP_NAMES == *","* ]]; then
@@ -224,7 +232,7 @@ jobs:
                 git commit -m "update $app_name image to ${IMAGE_NAME}:${TAG}" -a
                 git push ${REMOTE_REPO} HEAD:main --force
                 cd ../../../../
-              done 
+              done
             else
               cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
               cat $HOME/dev-copy.env > dev.env
@@ -233,7 +241,7 @@ jobs:
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
               git commit -m "update image to ${IMAGE_NAME}:${TAG}" -a
-              git push ${REMOTE_REPO} HEAD:main --force 
+              git push ${REMOTE_REPO} HEAD:main --force
             fi
         env:
           TAG: ${{ steps.get_image_tag.outputs.image_tag }}
