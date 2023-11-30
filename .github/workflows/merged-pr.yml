@@ -93,6 +93,7 @@ env:
   TEST_COMMAND: ${{ inputs.test_command }}
   BUILD_COMMAND: ${{ inputs.build_command }}
   LINT_COMMAND: ${{ inputs.lint_command }}
+  NPM_VERSION: ${{ inputs.npm_version }}
 
 jobs:
   bump-release:
@@ -122,10 +123,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: npm install
-        if: ${{ env.NPM_VERSION }}
-        run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
 
       - name: npm install
         if: ${{ env.NPM_VERSION }}
@@ -175,6 +172,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
+
+      - name: npm install
+        if: ${{ env.NPM_VERSION }}
+        run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
 
       - id: "image_name"
         name: "Get repo name and update IMAGE_NAME"

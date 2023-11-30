@@ -73,6 +73,7 @@ env:
   LINT_COMMAND: ${{ inputs.lint_command }}
   PUBLISH_COMMAND: ${{ inputs.publish_command }}
   CI: true
+  NPM_VERSION: ${{ inputs.npm_version }}
 
 jobs:
   bump-release:
