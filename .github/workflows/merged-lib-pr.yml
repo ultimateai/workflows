@@ -171,9 +171,6 @@ jobs:
           service_account: ${{ secrets.GSA_GCR_EMAIL }}
           export_environment_variables: true
 
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
-
       - name: Install npm Packages
         run: |
           if grep -q artifactregistry-login "package.json"; then
