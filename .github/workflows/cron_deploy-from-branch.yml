@@ -7,6 +7,10 @@ on:
           required: true
           type: string
           description: "Your container registry repository - like eu.gcr.io/ultimateai-169214"
+        gar_image_repo:
+          required: true
+          type: string
+          description: "Your container registry repository - like europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io"
         app_squad:
           required: true
           type: string
@@ -58,11 +62,9 @@ on:
           description: "Npm version used in the pipeline, defaults to LTS version"
 
 
-
-
-
 env:
   IMAGE_REPO: ${{ inputs.image_repo }}
+  GAR_IMAGE_REPO: ${{ inputs.gar_image_repo }}
   APP_SQUAD: ${{ inputs.app_squad }}
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
@@ -85,12 +87,12 @@ jobs:
       id-token: "write"
     steps:
       - name: Checkout to selected branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ env.BRANCH_NAME }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -102,7 +104,9 @@ jobs:
         name: "Get repo name and update IMAGE_NAME"
         run: |-
           IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
+          GAR_IMAGE_NAME=$GAR_IMAGE_REPO"/"${{ github.event.repository.name }}
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
 
       - name: Get .env file and scheduler
         run: |-
@@ -129,7 +133,7 @@ jobs:
        ### Authentings with Google Cloud to Push Image to GCR ###
       - id: "auth"
         name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v0"
+        uses: "google-github-actions/auth@v2"
         with:
           token_format: "access_token"
           workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
@@ -155,7 +159,7 @@ jobs:
         run: $BUILD_COMMAND
 
       - name: "Authenticating docker to push to gcr"
-        uses: docker/login-action@v2.1.0
+        uses: docker/login-action@v3
         with:
           registry: "eu.gcr.io"
           username: "oauth2accesstoken"
@@ -163,19 +167,35 @@ jobs:
 
       - name: Docker build
         run: |-
-          docker build -t "${IMAGE_NAME}:${TAGS}" .
+          docker build -t "${IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:${TAGS}" .
         shell: bash
         env:
           TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          GAR_IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
 
-      - name: Docker push
+      - name: Docker push to GCR
         run: |-
           docker push "${IMAGE_NAME}:${TAGS}"
         shell: bash
         env:
           TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+
+      - name: "Authenticating docker to push to gar"
+        uses: docker/login-action@v3
+        with:
+          registry: "europe-docker.pkg.dev"
+          username: "oauth2accesstoken"
+          password: "${{ steps.auth.outputs.access_token }}"
+
+      - name: Docker push to GAR
+        run: |-
+          docker push "${IMAGE_NAME}:${TAGS}"
+        shell: bash
+        env:
+          TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
 
       ##Deploy to dev
       - name: "Checkout k8s manifests"
@@ -200,4 +220,4 @@ jobs:
           TAG: ${{ steps.get_image_tag.outputs.image_tag }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           K8S_ENV_NAME: development
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
