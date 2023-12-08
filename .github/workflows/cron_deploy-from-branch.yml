@@ -6,10 +6,7 @@ on:
         image_repo:
           required: true
           type: string
-          description: "Your container registry repository - like eu.gcr.io/ultimateai-169214"
-        gar_image_repo:
-          required: true
-          type: string
+          default: europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io
           description: "Your container registry repository - like europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io"
         app_squad:
           required: true
@@ -64,7 +61,6 @@ on:
 
 env:
   IMAGE_REPO: ${{ inputs.image_repo }}
-  GAR_IMAGE_REPO: ${{ inputs.gar_image_repo }}
   APP_SQUAD: ${{ inputs.app_squad }}
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
@@ -101,11 +97,30 @@ jobs:
         run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
 
       - id: "image_name"
-        name: "Get repo name and update IMAGE_NAME"
+        name: "Extract repo name and update IMAGE_NAME"
         run: |-
-          IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
+          REPO_DOMAIN=$(echo $IMAGE_REPO | cut -d '/' -f 1)
+          case $REPO_DOMAIN in
+            *gcr.io)
+              GCR_DOMAIN=$REPO_DOMAIN
+              GAR_DOMAIN=europe-docker.pkg.dev
+              GCR_IMAGE_REPO=$IMAGE_REPO
+              GAR_IMAGE_REPO=europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io ;;
+            *pkg.dev)
+              GCR_DOMAIN=eu.gcr.io
+              GAR_DOMAIN=$REPO_DOMAIN
+              GCR_IMAGE_REPO=eu.gcr.io/ultimateai-169214
+              GAR_IMAGE_REPO=$IMAGE_REPO ;;
+          esac
+
+          GCR_IMAGE_NAME=$GCR_IMAGE_REPO"/"${{ github.event.repository.name }}
           GAR_IMAGE_NAME=$GAR_IMAGE_REPO"/"${{ github.event.repository.name }}
-          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+          echo "gcr_domain=$GCR_DOMAIN" >> $GITHUB_OUTPUT
+          echo "gar_domain=$GAR_DOMAIN" >> $GITHUB_OUTPUT
+          echo "gcr_image_repo=$GCR_IMAGE_REPO" >> $GITHUB_OUTPUT
+          echo "gar_image_repo=$GAR_IMAGE_REPO" >> $GITHUB_OUTPUT
+          echo "gcr_image_name=$GCR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
 
       - name: Get .env file and scheduler
@@ -161,17 +176,24 @@ jobs:
       - name: "Authenticating docker to push to gcr"
         uses: docker/login-action@v3
         with:
-          registry: "eu.gcr.io"
+          registry: "${{ steps.image_name.outputs.GCR_DOMAIN }}"
+          username: "oauth2accesstoken"
+          password: "${{ steps.auth.outputs.access_token }}"
+
+      - name: "Authenticating docker to push to gar"
+        uses: docker/login-action@v3
+        with:
+          registry: "${{ steps.image_name.outputs.GAR_DOMAIN }}"
           username: "oauth2accesstoken"
           password: "${{ steps.auth.outputs.access_token }}"
 
       - name: Docker build
         run: |-
-          docker build -t "${IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:${TAGS}" .
+          docker build -t "${GCR_IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:${TAGS}" .
         shell: bash
         env:
           TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          GCR_IMAGE_NAME: ${{ steps.image_name.outputs.gcr_image_name }}
           GAR_IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
 
       - name: Docker push to GCR
@@ -180,14 +202,7 @@ jobs:
         shell: bash
         env:
           TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
-
-      - name: "Authenticating docker to push to gar"
-        uses: docker/login-action@v3
-        with:
-          registry: "europe-docker.pkg.dev"
-          username: "oauth2accesstoken"
-          password: "${{ steps.auth.outputs.access_token }}"
+          IMAGE_NAME: ${{ steps.image_name.outputs.gcr_image_name }}
 
       - name: Docker push to GAR
         run: |-
