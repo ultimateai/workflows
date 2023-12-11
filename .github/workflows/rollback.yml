@@ -6,7 +6,8 @@ on:
         image_repo:
           required: true
           type: string
-          description: "Your container registry repository - like eu.gcr.io/ultimateai-169214"
+          default: europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io
+          description: "Your container registry repository - like europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io"
         app_squad:
           required: true
           type: string
@@ -57,7 +58,8 @@ env:
   ALLOWED_USERS: ${{ inputs.allowed_users }}
   APP_NAMES: ${{ inputs.app_names }}
   SLACK_CHANNEL_ID: ${{ inputs.slack_channel_id }}
-
+  GCR_ENABLED: ${{ vars.GCR_ENABLED || 'true' }}
+  GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
 
 jobs:
   deploy_rollback:
@@ -67,17 +69,46 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ inputs.version }}
-          
+
       - id: "image_name"
-        name: "Get repo name and update IMAGE_NAME"
-        run: |- 
-          IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
+        name: "Extract repo name and update IMAGE_NAME"
+        run: |-
+          REPO_DOMAIN=$(echo $IMAGE_REPO | cut -d '/' -f 1)
+          case $REPO_DOMAIN in
+            *gcr.io)
+              GCR_DOMAIN=$REPO_DOMAIN
+              GAR_DOMAIN=europe-docker.pkg.dev
+              GCR_IMAGE_REPO=$IMAGE_REPO
+              GAR_IMAGE_REPO=europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io ;;
+            *pkg.dev)
+              GCR_DOMAIN=eu.gcr.io
+              GAR_DOMAIN=$REPO_DOMAIN
+              GCR_IMAGE_REPO=eu.gcr.io/ultimateai-169214
+              GAR_IMAGE_REPO=$IMAGE_REPO ;;
+          esac
+
+          GCR_IMAGE_NAME=$GCR_IMAGE_REPO"/"${{ github.event.repository.name }}
+          GAR_IMAGE_NAME=$GAR_IMAGE_REPO"/"${{ github.event.repository.name }}
+
+          if [ "$GAR_ENABLED" == "true" ]
+          then
+            IMAGE_NAME=$GAR_IMAGE_NAME
+          else
+            IMAGE_NAME=$GCR_IMAGE_NAME
+          fi
+
+          echo "gcr_domain=$GCR_DOMAIN" >> $GITHUB_OUTPUT
+          echo "gar_domain=$GAR_DOMAIN" >> $GITHUB_OUTPUT
+          echo "gcr_image_repo=$GCR_IMAGE_REPO" >> $GITHUB_OUTPUT
+          echo "gar_image_repo=$GAR_IMAGE_REPO" >> $GITHUB_OUTPUT
+          echo "gcr_image_name=$GCR_IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-          
+
       - id: fetch_latest_release
         uses: ultimateai/fetch-latest-release@2.1.1
         with:
@@ -91,7 +122,7 @@ jobs:
 
       - id: "app_names"
         name: "Get app_names if necessary"
-        run: |- 
+        run: |-
           if [[ -z "${APP_NAMES}" ]]; then
             APP_NAMES=${{ github.event.repository.name }}
           else
@@ -152,11 +183,11 @@ jobs:
           fi
 
       - name: "Checkout k8s manifests"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
-      
+
       # - name: Check if version is already deployed in stage, if trying to deploy in prod
       #   if: ${{ (env.ENVIRONMENT == 'production') }}
       #   run: |-
@@ -188,11 +219,11 @@ jobs:
           else
             OLD_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
           fi
-          echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT 
+          echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
-          
+
       - name: Update the Image tags for Selected Environment
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
@@ -206,9 +237,9 @@ jobs:
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
               git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
-              git push ${REMOTE_REPO} HEAD:main --force 
+              git push ${REMOTE_REPO} HEAD:main --force
               cd ../../../../
-            done 
+            done
           else
             if [[ "${SINGLE_APP_NAME}" ]]; then
               cd $APP_SQUAD/$SINGLE_APP_NAME/overlay/$ENVIRONMENT
@@ -221,7 +252,7 @@ jobs:
             git config --local user.email $GITHUB_EMAIL
             git config --local user.name $GITHUB_USER
             git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
-            git push ${REMOTE_REPO} HEAD:main --force 
+            git push ${REMOTE_REPO} HEAD:main --force
           fi
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
@@ -230,7 +261,7 @@ jobs:
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
           SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
 
-      - uses: slackapi/slack-github-action@v1.23.0
+      - uses: slackapi/slack-github-action@v1.24.0
         name: Slack notification
         id: slack_notif_rollback
         if: ${{ env.ENVIRONMENT == 'production' }}
@@ -256,7 +287,7 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
 
-      - uses: slackapi/slack-github-action@v1.23.0
+      - uses: slackapi/slack-github-action@v1.24.0
         name: Threaded slack notification for version comparison
         if: ${{ env.ENVIRONMENT == 'production' }}
         id: slack_threaded_version
@@ -281,8 +312,3 @@ jobs:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
-
-
-                  
-
-      

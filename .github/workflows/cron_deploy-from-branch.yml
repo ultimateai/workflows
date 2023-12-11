@@ -124,12 +124,20 @@ jobs:
           GCR_IMAGE_NAME=$GCR_IMAGE_REPO"/"${{ github.event.repository.name }}
           GAR_IMAGE_NAME=$GAR_IMAGE_REPO"/"${{ github.event.repository.name }}
 
+          if [ "$GAR_ENABLED" == "true" ]
+          then
+            IMAGE_NAME=$GAR_IMAGE_NAME
+          else
+            IMAGE_NAME=$GCR_IMAGE_NAME
+          fi
+
           echo "gcr_domain=$GCR_DOMAIN" >> $GITHUB_OUTPUT
           echo "gar_domain=$GAR_DOMAIN" >> $GITHUB_OUTPUT
           echo "gcr_image_repo=$GCR_IMAGE_REPO" >> $GITHUB_OUTPUT
           echo "gar_image_repo=$GAR_IMAGE_REPO" >> $GITHUB_OUTPUT
           echo "gcr_image_name=$GCR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
       - name: Get .env file and scheduler
         run: |-
@@ -226,20 +234,13 @@ jobs:
 
       ##Deploy to dev
       - name: "Checkout k8s manifests"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
 
       - name: Update the Image tags for Dev Environment
         run: |-
-          if [ "$GAR_ENABLED" == "true" ]
-          then
-            IMAGE_NAME=$GAR_IMAGE_NAME
-          else
-            IMAGE_NAME=$GCR_IMAGE_NAME
-          fi
-
           cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
           cat $HOME/dev-copy.env > dev.env
           scheduler=$(cat $HOME/dev-scheduler-copy)
@@ -254,5 +255,4 @@ jobs:
           TAG: ${{ steps.get_image_tag.outputs.image_tag }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           K8S_ENV_NAME: development
-          GCR_IMAGE_NAME: ${{ steps.image_name.outputs.gcr_image_name }}
-          GAR_IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
