@@ -233,18 +233,26 @@ jobs:
 
       - name: Update the Image tags for Dev Environment
         run: |-
-            cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
-            cat $HOME/dev-copy.env > dev.env
-            scheduler=$(cat $HOME/dev-scheduler-copy)
-            yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
-            kustomize edit set image app=${IMAGE_NAME}:${TAG}
-            cat kustomization.yaml
-            git config --local user.email $GITHUB_EMAIL
-            git config --local user.name $GITHUB_USER
-            git commit -m "update image to ${IMAGE_NAME}:${TAG}" -a
-            git push ${REMOTE_REPO} HEAD:main --force
+          if [ "$GAR_ENABLED" == "true" ]
+          then
+            IMAGE_NAME=$GAR_IMAGE_NAME
+          else
+            IMAGE_NAME=$GCR_IMAGE_NAME
+          fi
+
+          cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
+          cat $HOME/dev-copy.env > dev.env
+          scheduler=$(cat $HOME/dev-scheduler-copy)
+          yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
+          kustomize edit set image app=${IMAGE_NAME}:${TAG}
+          cat kustomization.yaml
+          git config --local user.email $GITHUB_EMAIL
+          git config --local user.name $GITHUB_USER
+          git commit -m "update image to ${IMAGE_NAME}:${TAG}" -a
+          git push ${REMOTE_REPO} HEAD:main --force
         env:
           TAG: ${{ steps.get_image_tag.outputs.image_tag }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           K8S_ENV_NAME: development
-          IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
+          GCR_IMAGE_NAME: ${{ steps.image_name.outputs.gcr_image_name }}
+          GAR_IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
