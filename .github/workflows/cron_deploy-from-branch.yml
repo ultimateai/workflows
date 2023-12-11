@@ -72,6 +72,8 @@ env:
   NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
   NODE_VERSION: ${{ inputs.node_version }}
   NPM_VERSION: ${{ inputs.npm_version }}
+  GCR_ENABLED: ${{ vars.GCR_ENABLED || 'true' }}
+  GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
 
 
 jobs:
@@ -82,6 +84,12 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
+      - name: Validation
+        if: ${{ env.GCR_ENABLED != 'true' && env.GAR_ENABLED != 'true' }}
+        run: |
+          echo "At least one of GCR_ENABLED or GAR_ENABLED must be set to true.'
+          exit 1
+
       - name: Checkout to selected branch
         uses: actions/checkout@v4
         with:
@@ -174,6 +182,7 @@ jobs:
         run: $BUILD_COMMAND
 
       - name: "Authenticating docker to push to gcr"
+        if: ${{ env.GCR_ENABLED == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: "${{ steps.image_name.outputs.GCR_DOMAIN }}"
@@ -181,6 +190,7 @@ jobs:
           password: "${{ steps.auth.outputs.access_token }}"
 
       - name: "Authenticating docker to push to gar"
+        if: ${{ env.GAR_ENABLED == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: "${{ steps.image_name.outputs.GAR_DOMAIN }}"
@@ -197,6 +207,7 @@ jobs:
           GAR_IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
 
       - name: Docker push to GCR
+        if: ${{ env.GCR_ENABLED == 'true' }}
         run: |-
           docker push "${IMAGE_NAME}:${TAGS}"
         shell: bash
@@ -205,6 +216,7 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.gcr_image_name }}
 
       - name: Docker push to GAR
+        if: ${{ env.GAR_ENABLED == 'true' }}
         run: |-
           docker push "${IMAGE_NAME}:${TAGS}"
         shell: bash
