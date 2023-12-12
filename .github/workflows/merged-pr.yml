@@ -6,7 +6,8 @@ on:
         image_repo:
           required: true
           type: string
-          description: "Your container registry repository - like eu.gcr.io/ultimateai-169214"
+          default: europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io
+          description: "Your container registry repository - like europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io"
         app_squad:
           required: true
           type: string
@@ -76,7 +77,6 @@ on:
           description: "Npm version used in the pipeline, defaults to LTS version"
 
 
-
 env:
   IMAGE_REPO: ${{ inputs.image_repo }}
   APP_SQUAD: ${{ inputs.app_squad }}
@@ -94,6 +94,8 @@ env:
   BUILD_COMMAND: ${{ inputs.build_command }}
   LINT_COMMAND: ${{ inputs.lint_command }}
   NPM_VERSION: ${{ inputs.npm_version }}
+  GCR_ENABLED: ${{ vars.GCR_ENABLED || 'true' }}
+  GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
 
 jobs:
   bump-release:
@@ -104,7 +106,7 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
@@ -120,7 +122,7 @@ jobs:
           initial_release: ${{ env.INITIAL_RELEASE }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -131,7 +133,7 @@ jobs:
        ### Authentings with Google Cloud because of artifact registry ###
       - id: "auth"
         name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v1"
+        uses: "google-github-actions/auth@v2"
         with:
           token_format: "access_token"
           workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
@@ -163,13 +165,19 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - uses: actions/checkout@v3
+      - name: Validation
+        if: ${{ env.GCR_ENABLED != 'true' && env.GAR_ENABLED != 'true' }}
+        run: |
+          echo "At least one of GCR_ENABLED or GAR_ENABLED must be set to true.'
+          exit 1
+
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: main
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -178,9 +186,38 @@ jobs:
         run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
 
       - id: "image_name"
-        name: "Get repo name and update IMAGE_NAME"
+        name: "Extract repo name and update IMAGE_NAME"
         run: |-
-          IMAGE_NAME=$IMAGE_REPO"/"${{ github.event.repository.name }}
+          REPO_DOMAIN=$(echo $IMAGE_REPO | cut -d '/' -f 1)
+          case $REPO_DOMAIN in
+            *gcr.io)
+              GCR_DOMAIN=$REPO_DOMAIN
+              GAR_DOMAIN=europe-docker.pkg.dev
+              GCR_IMAGE_REPO=$IMAGE_REPO
+              GAR_IMAGE_REPO=europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io ;;
+            *pkg.dev)
+              GCR_DOMAIN=eu.gcr.io
+              GAR_DOMAIN=$REPO_DOMAIN
+              GCR_IMAGE_REPO=eu.gcr.io/ultimateai-169214
+              GAR_IMAGE_REPO=$IMAGE_REPO ;;
+          esac
+
+          GCR_IMAGE_NAME=$GCR_IMAGE_REPO"/"${{ github.event.repository.name }}
+          GAR_IMAGE_NAME=$GAR_IMAGE_REPO"/"${{ github.event.repository.name }}
+
+          if [ "$GAR_ENABLED" == "true" ]
+          then
+            IMAGE_NAME=$GAR_IMAGE_NAME
+          else
+            IMAGE_NAME=$GCR_IMAGE_NAME
+          fi
+
+          echo "gcr_domain=$GCR_DOMAIN" >> $GITHUB_OUTPUT
+          echo "gar_domain=$GAR_DOMAIN" >> $GITHUB_OUTPUT
+          echo "gcr_image_repo=$GCR_IMAGE_REPO" >> $GITHUB_OUTPUT
+          echo "gar_image_repo=$GAR_IMAGE_REPO" >> $GITHUB_OUTPUT
+          echo "gcr_image_name=$GCR_IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
       - id: "app_names"
@@ -239,16 +276,25 @@ jobs:
       ### Authentings with Google Cloud to Push Image to GCR ###
       - id: "auth"
         name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v1"
+        uses: "google-github-actions/auth@v2"
         with:
           token_format: "access_token"
           workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
           service_account: ${{ secrets.GSA_GCR_EMAIL }}
 
       - name: "Authenticating docker to push to gcr"
-        uses: docker/login-action@v2.1.0
+        if: ${{ env.GCR_ENABLED == 'true' }}
+        uses: docker/login-action@v3
         with:
-          registry: "eu.gcr.io"
+          registry: "${{ steps.image_name.outputs.GCR_DOMAIN }}"
+          username: "oauth2accesstoken"
+          password: "${{ steps.auth.outputs.access_token }}"
+
+      - name: "Authenticating docker to push to gar"
+        if: ${{ env.GAR_ENABLED == 'true' }}
+        uses: docker/login-action@v3
+        with:
+          registry: "${{ steps.image_name.outputs.GAR_DOMAIN }}"
           username: "oauth2accesstoken"
           password: "${{ steps.auth.outputs.access_token }}"
 
@@ -274,24 +320,35 @@ jobs:
       - name: Docker build
         run: |-
           echo "$SSH_KEY" > id_rsa
-          docker build -t "${IMAGE_NAME}:${TAGS}" .
+          docker build -t "${GCR_IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:${TAGS}" .
         shell: bash
         env:
           SSH_KEY: ${{ secrets.BB_SSH_KEY }}
           TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          GCR_IMAGE_NAME: ${{ steps.image_name.outputs.gcr_image_name }}
+          GAR_IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
 
-      - name: Docker push
+      - name: Docker push to GCR
+        if: ${{ env.GCR_ENABLED == 'true' }}
         run: |-
           docker push "${IMAGE_NAME}:${TAGS}"
         shell: bash
         env:
           TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
-          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.gcr_image_name }}
+
+      - name: Docker push to GAR
+        if: ${{ env.GAR_ENABLED == 'true' }}
+        run: |-
+          docker push "${IMAGE_NAME}:${TAGS}"
+        shell: bash
+        env:
+          TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
 
       ##Automatic deploy to development on merged PR to main
       - name: "Checkout k8s manifests"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
@@ -374,4 +431,3 @@ jobs:
           K8S_ENV_NAME: ${{ env.AUTOMATIC_DEPLOYMENT_TO }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
-

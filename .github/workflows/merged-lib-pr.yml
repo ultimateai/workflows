@@ -84,7 +84,7 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
@@ -100,7 +100,7 @@ jobs:
           initial_release: ${{ env.INITIAL_RELEASE }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -130,13 +130,13 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: main
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -164,7 +164,7 @@ jobs:
       ### Authenticating with Google Cloud to Push artifact to Google Artifactory ###
       - id: "auth"
         name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v0"
+        uses: "google-github-actions/auth@v2"
         with:
           token_format: "access_token"
           workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
