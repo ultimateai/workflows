@@ -60,7 +60,6 @@ on:
           description: "Npm version used in the pipeline, defaults to LTS version"
 
 env:
-  IMAGE_REPO: ${{ inputs.image_repo }}
   GITHUB_EMAIL: ${{ inputs.github_email }}
   GITHUB_USER: ${{ inputs.github_user }}
   UPDATE_FILE: ${{ inputs.update_file }}

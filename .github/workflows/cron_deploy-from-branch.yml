@@ -6,8 +6,7 @@ on:
         image_repo:
           required: true
           type: string
-          default: europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io
-          description: "Your container registry repository - like europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io"
+          description: "Your container registry repository - like europe-docker.pkg.dev/$project_id/$repo_id"
         app_squad:
           required: true
           type: string
@@ -74,6 +73,8 @@ env:
   NPM_VERSION: ${{ inputs.npm_version }}
   GCR_ENABLED: ${{ vars.GCR_ENABLED || 'true' }}
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
+  GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
+  GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
 
 
 jobs:
@@ -111,13 +112,13 @@ jobs:
           case $REPO_DOMAIN in
             *gcr.io)
               GCR_DOMAIN=$REPO_DOMAIN
-              GAR_DOMAIN=europe-docker.pkg.dev
+              GAR_DOMAIN=$(echo $GAR_DEFAULT_REPO | cut -d '/' -f 1)
               GCR_IMAGE_REPO=$IMAGE_REPO
-              GAR_IMAGE_REPO=europe-docker.pkg.dev/common-main-cfc4/eu.gcr.io ;;
+              GAR_IMAGE_REPO=$GAR_DEFAULT_REPO ;;
             *pkg.dev)
-              GCR_DOMAIN=eu.gcr.io
+              GCR_DOMAIN=$(echo $GCR_DEFAULT_REPO | cut -d '/' -f 1)
               GAR_DOMAIN=$REPO_DOMAIN
-              GCR_IMAGE_REPO=eu.gcr.io/ultimateai-169214
+              GCR_IMAGE_REPO=$GCR_DEFAULT_REPO
               GAR_IMAGE_REPO=$IMAGE_REPO ;;
           esac
 
