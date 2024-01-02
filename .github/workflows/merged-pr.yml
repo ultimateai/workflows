@@ -321,7 +321,7 @@ jobs:
       - name: Docker build
         run: |-
           echo "$SSH_KEY" > id_rsa
-          docker build -t "${GCR_IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:${TAGS}" .
+          docker build -t "${GCR_IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:release-${TAGS}" .
         shell: bash
         env:
           SSH_KEY: ${{ secrets.BB_SSH_KEY }}
@@ -342,6 +342,7 @@ jobs:
         if: ${{ env.GAR_ENABLED == 'true' }}
         run: |-
           docker push "${IMAGE_NAME}:${TAGS}"
+          docker push "${IMAGE_NAME}:release-${TAGS}"
         shell: bash
         env:
           TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}

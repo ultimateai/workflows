@@ -282,7 +282,7 @@ jobs:
 
       - name: Docker build
         run: |-
-          docker build -t "${GCR_IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:${TAGS}" .
+          docker build -t "${GCR_IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:release-${TAGS}" .
         shell: bash
         env:
           TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
@@ -302,6 +302,7 @@ jobs:
         if: ${{ env.GAR_ENABLED == 'true' }}
         run: |-
           docker push "${IMAGE_NAME}:${TAGS}"
+          docker push "${IMAGE_NAME}:release-${TAGS}"
         shell: bash
         env:
           TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
