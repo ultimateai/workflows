@@ -107,10 +107,23 @@ jobs:
         if: ${{ env.NPM_VERSION }}
         run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
 
+      ### Authenticating with Google Cloud to Push artifact to Google Artifactory ###
+      - name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v2"
+        if: ${{ env.UPDATE_FILE == 'package.json'}}
+        with:
+          token_format: "access_token"
+          workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
+          service_account: ${{ secrets.GSA_GCR_EMAIL }}
+          export_environment_variables: true
+
       - name: Update package.json after bumping
         if: ${{ env.UPDATE_FILE == 'package.json'}}
         run: |-
           git fetch;git pull
+          if grep -q artifactregistry-login "package.json"; then
+            npm run artifactregistry-login -- --credential-config .npmrc
+          fi
           npm install --package-lock-only --no-audit
           git config --local user.email $GITHUB_EMAIL
           git config --local user.name $GITHUB_USER
