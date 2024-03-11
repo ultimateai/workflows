@@ -56,6 +56,11 @@ on:
           required: false
           type: string
           description: "Npm version used in the pipeline, defaults to LTS version"
+        region:
+          required: false
+          type: string
+          description: "Region name to deploy - europe or us, defaults to europe"
+          default: "europe"
 
 
 env:
@@ -75,6 +80,7 @@ env:
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
+  REGION: ${{ inputs.region }}
 
 
 jobs:
@@ -85,10 +91,18 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - name: Validation
+      - name: GCR and GAR Validation
         if: ${{ env.GCR_ENABLED != 'true' && env.GAR_ENABLED != 'true' }}
         run: |
-          echo "At least one of GCR_ENABLED or GAR_ENABLED must be set to true.'
+          echo "At least one of GCR_ENABLED or GAR_ENABLED must be set to true."
+          echo "At least one of GCR_ENABLED or GAR_ENABLED must be set to true." >> $GITHUB_STEP_SUMMARY
+          exit 1
+      
+      - name: Region Validation
+        if: ${{ env.REGION != 'europe' && env.REGION != 'us' }}
+        run: |
+          echo "Region must be either 'europe' or 'us'."
+          echo "Region must be either 'europe' or 'us'." >> $GITHUB_STEP_SUMMARY
           exit 1
 
       - name: Checkout to selected branch
@@ -140,10 +154,17 @@ jobs:
           echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
-      - name: Get .env file and scheduler
+      - name: Get .env file and scheduler depending on region
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           cat "deployment_envs/dev.env" > $HOME/dev-copy.env
           cat "deployment_schedules/dev" > $HOME/dev-scheduler-copy
+      
+      - name: Get .env file and scheduler depending on region
+        if: ${{ env.REGION == 'us' }}
+        run: |-
+          cat "deployment_envs/region/us/dev.env" > $HOME/dev-copy.env
+          cat "deployment_schedules/region/us/dev" > $HOME/dev-scheduler-copy
 
       - id: get_image_tag
         name: Get image tag from branch name and commitId
@@ -241,6 +262,7 @@ jobs:
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
 
       - name: Update the Image tags for Dev Environment
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
           cat $HOME/dev-copy.env > dev.env
@@ -256,4 +278,24 @@ jobs:
           TAG: ${{ steps.get_image_tag.outputs.image_tag }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           K8S_ENV_NAME: development
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+      
+      - name: Update the Image tags for Dev Environment
+        if: ${{ env.REGION == 'us' }}
+        run: |-
+          cd $APP_SQUAD/${{ github.event.repository.name }}/region/${REGION}/${K8S_ENV_NAME}
+          cat $HOME/dev-copy.env > dev.env
+          scheduler=$(cat $HOME/dev-scheduler-copy)
+          yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
+          kustomize edit set image app=${IMAGE_NAME}:${TAG}
+          cat kustomization.yaml
+          git config --local user.email $GITHUB_EMAIL
+          git config --local user.name $GITHUB_USER
+          git commit -m "update image to ${IMAGE_NAME}:${TAG}" -a
+          git push ${REMOTE_REPO} HEAD:main --force
+        env:
+          TAG: ${{ steps.get_image_tag.outputs.image_tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          K8S_ENV_NAME: development
+          REGION: ${{ env.REGION }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
