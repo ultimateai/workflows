@@ -32,6 +32,11 @@ on:
           type: string
           default: "#plt-239"
           description: "Slack channel ID where you want your notifications"
+        region:
+          required: false
+          type: string
+          description: "Region name to deploy - europe or us-central1, defaults to europe"
+          default: "europe"
 
 
 env:
@@ -46,6 +51,7 @@ env:
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
+  REGION: ${{ inputs.region }}
 
 jobs:
   deploy:
@@ -58,6 +64,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      
+      - name: Region Validation
+        if: ${{ env.REGION != 'europe' && env.REGION != 'us-central1' }}
+        run: |
+          echo "Region must be either 'europe' or 'us-central1'."
+          echo "Region must be either 'europe' or 'us-central1'." >> $GITHUB_STEP_SUMMARY
+          exit 1
 
       - id: "image_name"
         name: "Extract repo name and update IMAGE_NAME"
@@ -94,7 +107,8 @@ jobs:
           echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
-      - name: Get env file and scheduler for updating k8s-manifest repo
+      - name: Get env file and scheduler for updating k8s-manifest repo in case of europe region
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           if [[ "${ENVIRONMENT}" = "production" ]]; then
             cat "deployment_envs/prod.env" > $HOME/envfile.env
@@ -108,6 +122,23 @@ jobs:
           fi
           if [[ -f "deployment_envs/common.env" ]]; then
             echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Get env file and scheduler for updating k8s-manifest repo in case of us region
+        if: ${{ env.REGION != 'europe' }}
+        run: |-
+          if [[ "${ENVIRONMENT}" = "production" ]]; then
+            cat "deployment_envs/region/${{ env.REGION }}/prod.env" > $HOME/envfile.env
+            cat "deployment_schedules/region/${{ env.REGION }}/prod" > $HOME/scheduler
+          elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+            cat "deployment_envs/region/${{ env.REGION }}/stage.env" > $HOME/envfile.env
+            cat "deployment_schedules/region/${{ env.REGION }}/stage" > $HOME/scheduler
+          else
+            cat "deployment_envs/region/${{ env.REGION }}/dev.env" > $HOME/envfile.env
+            cat "deployment_schedules/region/${{ env.REGION }}/dev" > $HOME/cheduler
+          fi
+          if [[ -f "deployment_envs/region/${{ env.REGION }}/common.env" ]]; then
+            echo "Please delete deployment_envs/region/${{ env.REGION }}/common.env" >> $GITHUB_STEP_SUMMARY
           fi
 
       - id: fetch_latest_release
@@ -170,8 +201,27 @@ jobs:
           echo "changelog_json=$JSON_CONTENT" >> $GITHUB_OUTPUT
 
       - name: Update the Image tags and env files for Selected Environment
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
+          FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+          scheduler=$(cat $HOME/scheduler)
+          yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
+          kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+          cat kustomization.yaml
+          git config --local user.email $GITHUB_EMAIL
+          git config --local user.name $GITHUB_USER
+          git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+          git push ${REMOTE_REPO} HEAD:main --force
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+      
+      - name: Update the Image tags and env files for Selected Environment
+        if: ${{ env.REGION != 'europe' }}
+        run: |-
+          cd $APP_SQUAD/${{ github.event.repository.name }}/region/${REGION}/${K8S_ENV_NAME}
           FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
           scheduler=$(cat $HOME/scheduler)
           yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
