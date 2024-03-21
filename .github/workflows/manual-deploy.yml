@@ -53,6 +53,11 @@ on:
           required: true
           type: string
           description: "Bucket in which to store e2e results"
+        region:
+          required: false
+          type: string
+          description: "Region name to deploy - europe or us-central1, defaults to europe"
+          default: "europe"
 
 
 env:
@@ -72,6 +77,7 @@ env:
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
+  REGION: ${{ inputs.region }}
 
 
 jobs:
@@ -91,6 +97,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      
+      - name: Region Validation
+        if: ${{ env.REGION != 'europe' && env.REGION != 'us-central1' }}
+        run: |
+          echo "Region must be either 'europe' or 'us-central1'."
+          echo "Region must be either 'europe' or 'us-central1'." >> $GITHUB_STEP_SUMMARY
+          exit 1
 
       - id: "image_name"
         name: "Extract repo name and update IMAGE_NAME"
@@ -138,7 +151,8 @@ jobs:
           fi
           echo "app_names=$APP_NAMES" >> $GITHUB_OUTPUT
 
-      - name: Get environment.env file for updating k8s-manifest repo
+      - name: Get env file and scheduler for updating k8s-manifest repo in case of europe region
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
               IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
@@ -164,6 +178,37 @@ jobs:
               cat "deployment_envs/dev.env" > $HOME/envfile.env
             fi
             if [[ -f "deployment_envs/common.env" ]]; then
+              echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: Get env file and scheduler for updating k8s-manifest repo in case of non-europe region
+        if: ${{ env.REGION != 'europe' }}
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                if [[ "${ENVIRONMENT}" = "production" ]]; then
+                  cat "deployment_envs/$app_name/region/$REGION/prod.env" > $HOME/$app_name-envfile.env
+                elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+                  cat "deployment_envs/$app_name/region/$REGION/stage.env" > $HOME/$app_name-envfile.env
+                else
+                  cat "deployment_envs/$app_name/region/$REGION/dev.env" > $HOME/$app_name-envfile.env
+                fi
+                if [[ -f "deployment_envs/$app_name/common.env" ]]; then
+                  echo "Please delete deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
+                fi
+              done
+          else
+            if [[ "${ENVIRONMENT}" = "production" ]]; then
+              cat "deployment_envs/region/$REGION/prod.env" > $HOME/envfile.env
+            elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+              cat "deployment_envs/region/$REGION/stage.env" > $HOME/envfile.env
+            else
+              cat "deployment_envs/region/$REGION/dev.env" > $HOME/envfile.env
+            fi
+            if [[ -f "deployment_envs/region/$REGION/common.env" ]]; then
               echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
             fi
           fi
@@ -242,7 +287,8 @@ jobs:
           JSON_CONTENT=$(echo "${{ env.FILTERED_CHANGELOG_CONTENT }}" | sed 's/$/\\n/' | tr -d '\n')
           echo "changelog_json=$JSON_CONTENT" >> $GITHUB_OUTPUT
 
-      - name: Update the Image tags and env files for Selected Environment
+      - name: Update the Image tags and env files for Selected Environment in europe region
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
             IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
@@ -263,6 +309,44 @@ jobs:
               cd $APP_SQUAD/$SINGLE_APP_NAME/overlay/$ENVIRONMENT
             else
               cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
+            fi
+            FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+            cat kustomization.yaml
+            git config --local user.email $GITHUB_EMAIL
+            git config --local user.name $GITHUB_USER
+            git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+            git push ${REMOTE_REPO} HEAD:main --force
+          fi
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
+          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
+    
+      - name: Update the Image tags and env files for Selected Environment in non-europe region
+        if: ${{ env.REGION != 'europe' }}
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+            IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+            for app_name in "${array_app_names[@]}"
+            do
+              cd $APP_SQUAD/$app_name/region/$REGION/$ENVIRONMENT
+              FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              cat kustomization.yaml
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+              git push ${REMOTE_REPO} HEAD:main --force
+              cd ../../../../
+            done
+          else
+            if [[ "${SINGLE_APP_NAME}" ]]; then
+              cd $APP_SQUAD/$SINGLE_APP_NAME/region/$REGION/$ENVIRONMENT
+            else
+              cd $APP_SQUAD/${APP_NAMES}/region/$REGION/$ENVIRONMENT
             fi
             FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
