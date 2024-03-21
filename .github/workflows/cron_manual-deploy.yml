@@ -136,6 +136,8 @@ jobs:
           else
             cat "deployment_envs/region/${{ env.REGION }}/dev.env" > $HOME/envfile.env
             cat "deployment_schedules/region/${{ env.REGION }}/dev" > $HOME/cheduler
+            ls $HOME
+            cat $HOME/scheduler
           fi
           if [[ -f "deployment_envs/region/${{ env.REGION }}/common.env" ]]; then
             echo "Please delete deployment_envs/region/${{ env.REGION }}/common.env" >> $GITHUB_STEP_SUMMARY
@@ -205,6 +207,7 @@ jobs:
         run: |-
           cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
           FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+          ls $HOME
           scheduler=$(cat $HOME/scheduler)
           yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
           kustomize edit set image app=${IMAGE_NAME}:${TAGS}

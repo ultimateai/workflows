@@ -184,7 +184,7 @@ jobs:
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
 
-      - name: Update the Image tags for Selected Environment
+      - name: Update the Image tags for Selected Environment for Europe region
         if: ${{ env.REGION == 'europe' }}
         run: |-
           cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
@@ -202,7 +202,7 @@ jobs:
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
       
-      - name: Update the Image tags for Selected Environment
+      - name: Update the Image tags for Selected Environment for non europe region
         if: ${{ env.REGION != 'europe' }}
         run: |-
           cd $APP_SQUAD/${{ github.event.repository.name }}/region/${REGION}/$ENVIRONMENT
