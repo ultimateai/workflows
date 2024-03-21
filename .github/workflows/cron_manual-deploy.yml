@@ -221,7 +221,7 @@ jobs:
       - name: Update the Image tags and env files for Selected Environment
         if: ${{ env.REGION != 'europe' }}
         run: |-
-          cd $APP_SQUAD/${{ github.event.repository.name }}/region/${REGION}/${K8S_ENV_NAME}
+          cd $APP_SQUAD/${{ github.event.repository.name }}/region/${REGION}/$ENVIRONMENT
           FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
           scheduler=$(cat $HOME/scheduler)
           yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
