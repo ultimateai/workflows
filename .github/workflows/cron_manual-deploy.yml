@@ -135,9 +135,7 @@ jobs:
             cat "deployment_schedules/region/${{ env.REGION }}/stage" > $HOME/scheduler
           else
             cat "deployment_envs/region/${{ env.REGION }}/dev.env" > $HOME/envfile.env
-            cat "deployment_schedules/region/${{ env.REGION }}/dev" > $HOME/cheduler
-            ls $HOME
-            cat $HOME/scheduler
+            cat "deployment_schedules/region/${{ env.REGION }}/dev" > $HOME/scheduler
           fi
           if [[ -f "deployment_envs/region/${{ env.REGION }}/common.env" ]]; then
             echo "Please delete deployment_envs/region/${{ env.REGION }}/common.env" >> $GITHUB_STEP_SUMMARY
