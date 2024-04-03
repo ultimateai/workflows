@@ -81,7 +81,7 @@ env:
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
   REGION: ${{ inputs.region }}
-  AVAILABLE_ZONES_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_ZONES_FOR_DEPLOYMENT }}
+  AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
 
 
 jobs:
@@ -101,11 +101,11 @@ jobs:
 
       - name: Check if region is valid
         run: |-
-          if [[ " ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]} " =~ ${{ env.REGION }} ]]; then
+          if [[ " ${AVAILABLE_REGIONS_FOR_DEPLOYMENT[*]} " =~ ${{ env.REGION }} ]]; then
             echo "This region - ${{ env.REGION }} - is allowed"
           else
-            echo "Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
-            echo "::error::Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            echo "Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_REGIONS_FOR_DEPLOYMENT[*]}"
+            echo "::error::Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_REGIONS_FOR_DEPLOYMENT[*]}"
             exit 1
           fi
 
