@@ -52,6 +52,7 @@ env:
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
   REGION: ${{ inputs.region }}
+  AVAILABLE_ZONES_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_ZONES_FOR_DEPLOYMENT }}
 
 jobs:
   deploy:
@@ -65,12 +66,15 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Region Validation
-        if: ${{ env.REGION != 'europe' && env.REGION != 'us-central1' }}
-        run: |
-          echo "Region must be either 'europe' or 'us-central1'."
-          echo "Region must be either 'europe' or 'us-central1'." >> $GITHUB_STEP_SUMMARY
-          exit 1
+      - name: Check if region is valid
+        run: |-
+          if [[ " ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]} " =~ ${{ env.REGION }} ]]; then
+            echo "This region - ${{ env.REGION }} - is allowed"
+          else
+            echo "Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            echo "::error::Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            exit 1
+          fi
 
       - id: "image_name"
         name: "Extract repo name and update IMAGE_NAME"

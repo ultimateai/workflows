@@ -60,6 +60,11 @@ on:
           required: false
           type: string
           description: "Npm version used in the pipeline, defaults to LTS version"
+        region:
+          required: false
+          type: string
+          description: "Region name to deploy - europe or us-central1, defaults to europe"
+          default: "europe"
 
 
 env:
@@ -80,6 +85,8 @@ env:
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
+  REGION: ${{ inputs.region }}
+  AVAILABLE_ZONES_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_ZONES_FOR_DEPLOYMENT }}
 
 jobs:
   deploy:
@@ -94,6 +101,16 @@ jobs:
         run: |
           echo "At least one of GCR_ENABLED or GAR_ENABLED must be set to true.'
           exit 1
+
+      - name: Check if region is valid
+        run: |-
+          if [[ " ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]} " =~ ${{ env.REGION }} ]]; then
+            echo "This region - ${{ env.REGION }} - is allowed"
+          else
+            echo "Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            echo "::error::Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            exit 1
+          fi
 
       - name: Checkout to selected branch
         uses: actions/checkout@v4
