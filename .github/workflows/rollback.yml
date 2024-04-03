@@ -44,6 +44,11 @@ on:
           type: string
           default: "#plt-239"
           description: "Slack channel ID where you want your notifications"
+        region:
+          required: false
+          type: string
+          description: "Region name to deploy - europe or us-central1, defaults to europe"
+          default: "europe"
 
 
 env:
@@ -61,6 +66,8 @@ env:
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
+  REGION: ${{ inputs.region }}
+  AVAILABLE_ZONES_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_ZONES_FOR_DEPLOYMENT }}
 
 jobs:
   deploy_rollback:
@@ -74,6 +81,16 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs.version }}
+      
+      - name: Check if region is valid
+        run: |-
+          if [[ " ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]} " =~ ${{ env.REGION }} ]]; then
+            echo "This region - ${{ env.REGION }} - is allowed"
+          else
+            echo "Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            echo "::error::Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            exit 1
+          fi
 
       - id: "image_name"
         name: "Extract repo name and update IMAGE_NAME"
@@ -132,28 +149,8 @@ jobs:
           fi
           echo "app_names=$APP_NAMES" >> $GITHUB_OUTPUT
 
-      # - id: tag_to_deploy
-      #   name: Calculate version to deploy
-      #   run: |-
-      #     if [[ -z "${VERSION}"  ]]; then
-      #       echo "Version is empty, in rollback workflow version is mandatory!"
-      #       exit 1
-      #     else
-      #       if [[ -z "${ALLOWED_USERS}"  ]]; then
-      #         echo "You have selected a specific version to deploy, but provided no list of people who can deploy specific versions (allowed_users)"
-      #         exit 1
-      #       fi
-      #       IFS=',' read -r -a array <<< "$ALLOWED_USERS"
-      #       if [[ " ${array[*]} " =~ ${{ github.actor }} ]]; then
-      #         echo "This user - ${{ github.actor }} - is allowed"
-      #         TAG=$VERSION
-      #       else
-      #         echo "Sorry,${{ github.actor }}, you are not allowed to choose specific version to deploy - contact your platform team"
-      #         exit 1
-      #       fi
-      #     fi
-      #     echo '::set-output name=tag::'$TAG
-      - name: Get environment.env file for updating k8s-manifest repo
+      - name: Get environment.env file for updating k8s-manifest repo in europe region scenario
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
               IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
@@ -180,6 +177,37 @@ jobs:
             fi
             if [[ -f "deployment_envs/common.env" ]]; then
               echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: Get environment.env file for updating k8s-manifest repo in non-europe region scenario
+        if: ${{ env.REGION != 'europe' }}
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+              for app_name in "${array_app_names[@]}"
+              do
+                if [[ "${ENVIRONMENT}" = "production" ]]; then
+                  cat "deployment_envs/$app_name/region/$REGION/prod.env" > $HOME/$app_name-envfile.env
+                elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+                  cat "deployment_envs/$app_name/region/$REGION/stage.env" > $HOME/$app_name-envfile.env
+                else
+                  cat "deployment_envs/$app_name/region/$REGION/dev.env" > $HOME/$app_name-envfile.env
+                fi
+                if [[ -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
+                  echo "Please delete deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
+                fi
+              done
+          else
+            if [[ "${ENVIRONMENT}" = "production" ]]; then
+              cat "deployment_envs/region/$REGION/prod.env" > $HOME/envfile.env
+            elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+              cat "deployment_envs/region/$REGION/stage.env" > $HOME/envfile.env
+            else
+              cat "deployment_envs/region/$REGION/dev.env" > $HOME/envfile.env
+            fi
+            if [[ -f "deployment_envs/region/$REGION/common.env" ]]; then
+              echo "Please delete deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
             fi
           fi
 
@@ -225,7 +253,8 @@ jobs:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
 
-      - name: Update the Image tags for Selected Environment
+      - name: Update the Image tags for Selected Environment in case of europe region
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
             IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
@@ -261,6 +290,45 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
           SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
+
+      - name: Update the Image tags for Selected Environment in case of non-europe region
+        if: ${{ env.REGION != 'europe' }}
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+            IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+            for app_name in "${array_app_names[@]}"
+            do
+              cd $APP_SQUAD/$app_name/region/$REGION/$ENVIRONMENT
+              FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              cat kustomization.yaml
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+              git push ${REMOTE_REPO} HEAD:main --force
+              cd ../../../../
+            done
+          else
+            if [[ "${SINGLE_APP_NAME}" ]]; then
+              cd $APP_SQUAD/$SINGLE_APP_NAME/region/$REGION/$ENVIRONMENT
+            else
+              cd $APP_SQUAD/${APP_NAMES}/region/$REGION/$ENVIRONMENT
+            fi
+            FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+            cat kustomization.yaml
+            git config --local user.email $GITHUB_EMAIL
+            git config --local user.name $GITHUB_USER
+            git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+            git push ${REMOTE_REPO} HEAD:main --force
+          fi
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
+          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
+
 
       - uses: slackapi/slack-github-action@v1.24.0
         name: Slack notification

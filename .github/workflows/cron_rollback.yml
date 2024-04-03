@@ -36,6 +36,11 @@ on:
           type: string
           default: "#plt-239"
           description: "Slack channel ID where you want your notifications"
+        region:
+          required: false
+          type: string
+          description: "Region name to deploy - europe or us-central1, defaults to europe"
+          default: "europe"
 
 
 env:
@@ -51,6 +56,8 @@ env:
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
+  REGION: ${{ inputs.region }}
+  AVAILABLE_ZONES_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_ZONES_FOR_DEPLOYMENT }}
 
 jobs:
   deploy_rollback:
@@ -64,6 +71,16 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs.version }}
+      
+      - name: Check if region is valid
+        run: |-
+          if [[ " ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]} " =~ ${{ env.REGION }} ]]; then
+            echo "This region - ${{ env.REGION }} - is allowed"
+          else
+            echo "Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            echo "::error::Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            exit 1
+          fi
 
       - id: "image_name"
         name: "Extract repo name and update IMAGE_NAME"
@@ -111,7 +128,8 @@ jobs:
           TAG=$VERSION
           echo '::set-output name=tag::'$TAG
 
-      - name: Get environment.env file for updating k8s-manifest repo
+      - name: Get environment.env file for updating k8s-manifest repo for europe region
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           if [[ "${ENVIRONMENT}" = "production" ]]; then
             cat "deployment_envs/prod.env" > $HOME/envfile.env
@@ -125,6 +143,23 @@ jobs:
           fi
           if [[ -f "deployment_envs/common.env" ]]; then
             echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Get environment.env file for updating k8s-manifest repo for us region
+        if: ${{ env.REGION != 'europe' }}
+        run: |-
+          if [[ "${ENVIRONMENT}" = "production" ]]; then
+            cat "deployment_envs/region/${{ env.REGION }}/prod.env" > $HOME/envfile.env
+            cat "deployment_schedules/region/${{ env.REGION }}/prod" > $HOME/scheduler
+          elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+            cat "deployment_envs/region/${{ env.REGION }}/stage.env" > $HOME/envfile.env
+            cat "deployment_schedules/region/${{ env.REGION }}/stage" > $HOME/scheduler
+          else
+            cat "deployment_envs/region/${{ env.REGION }}/dev.env" > $HOME/envfile.env
+            cat "deployment_schedules/region/${{ env.REGION }}/dev" > $HOME/cheduler
+          fi
+          if [[ -f "deployment_envs/region/${{ env.REGION }}/common.env" ]]; then
+            echo "Please delete deployment_envs/region/${{ env.REGION }}/common.env" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: "Checkout k8s manifests"
@@ -153,9 +188,28 @@ jobs:
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
 
-      - name: Update the Image tags for Selected Environment
+      - name: Update the Image tags for Selected Environment for Europe region
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
+          FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+          kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+          scheduler=$(cat $HOME/scheduler)
+          yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
+          cat kustomization.yaml
+          git config --local user.email $GITHUB_EMAIL
+          git config --local user.name $GITHUB_USER
+          git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+          git push ${REMOTE_REPO} HEAD:main --force
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+      
+      - name: Update the Image tags for Selected Environment for non europe region
+        if: ${{ env.REGION != 'europe' }}
+        run: |-
+          cd $APP_SQUAD/${{ github.event.repository.name }}/region/${REGION}/$ENVIRONMENT
           FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
           kustomize edit set image app=${IMAGE_NAME}:${TAGS}
           scheduler=$(cat $HOME/scheduler)

@@ -70,6 +70,11 @@ on:
           required: false
           type: string
           description: "Npm version used in the pipeline, defaults to LTS version"
+        region:
+          required: false
+          type: string
+          description: "Region name to deploy - europe or us-central1, defaults to europe"
+          default: "europe"
 
 
 env:
@@ -92,6 +97,8 @@ env:
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
+  REGION: ${{ inputs.region }}
+  AVAILABLE_ZONES_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_ZONES_FOR_DEPLOYMENT }}
 
 jobs:
   bump-release:
@@ -166,6 +173,16 @@ jobs:
         run: |
           echo "At least one of GCR_ENABLED or GAR_ENABLED must be set to true.'
           exit 1
+      
+      - name: Check if region is valid
+        run: |-
+          if [[ " ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]} " =~ ${{ env.REGION }} ]]; then
+            echo "This region - ${{ env.REGION }} - is allowed"
+          else
+            echo "Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            echo "::error::Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_ZONES_FOR_DEPLOYMENT[*]}"
+            exit 1
+          fi
 
       - uses: actions/checkout@v4
         with:
@@ -216,7 +233,8 @@ jobs:
           echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
-      - name: Get environment.env file and scheduler for updating k8s-manifest repo
+      - name: Get environment.env file and scheduler for updating k8s-manifest repo in europe region scenario
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"staging"* ]]; then
             cat "deployment_envs/stage.env" > $HOME/staging-envfile.env
@@ -228,6 +246,21 @@ jobs:
           fi
           if [[ -f "deployment_envs/common.env" ]]; then
             echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Get environment.env file and scheduler for updating k8s-manifest repo in us region scenario
+        if: ${{ env.REGION != 'europe' }}
+        run: |-
+          if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"staging"* ]]; then
+            cat "deployment_envs/region/${{ env.REGION }}/stage.env" > $HOME/staging-envfile.env
+            cat "deployment_schedules/region/${{ env.REGION }}/stage" > $HOME/staging-scheduler
+          fi
+          if [[ "${AUTOMATIC_DEPLOYMENT_TO}" == *"development"* ]]; then
+            cat "deployment_envs/region/${{ env.REGION }}/dev.env" > $HOME/development-envfile.env
+            cat "deployment_schedules/region/${{ env.REGION }}/dev" > $HOME/development-scheduler
+          fi
+          if [[ -f "deployment_envs/region/${{ env.REGION }}/common.env" ]]; then
+            echo "Please delete deployment_envs/region/${{ env.REGION }}/common.env" >> $GITHUB_STEP_SUMMARY
           fi
 
       - id: fetch_latest_release
@@ -314,7 +347,8 @@ jobs:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
 
-      - name: Update the Image tags for Preproduction Environment
+      - name: Update the Image tags for Preproduction Environment for europe region
+        if: ${{ env.REGION == 'europe' }}
         run: |-
           if [[ $K8S_ENV_NAME == *","* ]]; then
             echo "Deploying in multiple environments: $K8S_ENV_NAME"
@@ -342,6 +376,55 @@ jobs:
           else
             if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then
               cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
+              FILE_ENV=$(ls | grep ".env");cat $HOME/${K8S_ENV_NAME}-envfile.env > $FILE_ENV
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              cat kustomization.yaml
+              scheduler=$(cat $HOME/${K8S_ENV_NAME}-scheduler)
+              yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${IMAGE_NAME}:${TAGS} is already deployed to ${K8S_ENV_NAME}" >> $GITHUB_STEP_SUMMARY
+              git push ${REMOTE_REPO} HEAD:main --force
+            else
+              echo "You want to deploy automatically to ${K8S_ENV_NAME}, which is not development nor staging. This is not allowed."
+              exit 1
+            fi
+          fi
+        env:
+          TAGS: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          K8S_ENV_NAME: ${{ env.AUTOMATIC_DEPLOYMENT_TO }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+
+    - name: Update the Image tags for Preproduction Environment for US region
+        if: ${{ env.REGION != 'europe' }}
+        run: |-
+          if [[ $K8S_ENV_NAME == *","* ]]; then
+            echo "Deploying in multiple environments: $K8S_ENV_NAME"
+            IFS=',' read -r -a envs <<< "$K8S_ENV_NAME"
+            for env in "${envs[@]}"
+            do
+              if [[ $env == "development" || $env == "staging"  ]]; then
+                  echo "Deploying ${{ github.event.repository.name }} at $env "
+                  cd $APP_SQUAD/${{ github.event.repository.name }}/region/${REGION}/$env
+                  FILE_ENV=$(ls | grep ".env");cat $HOME/$env-envfile.env > $FILE_ENV
+                  kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+                  scheduler=$(cat $HOME/$env-scheduler)
+                  yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
+                  cat kustomization.yaml
+                  git config --local user.email $GITHUB_EMAIL
+                  git config --local user.name $GITHUB_USER
+                  git commit -m "update $env image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${IMAGE_NAME}:${TAGS} is already deployed to $env" >> $GITHUB_STEP_SUMMARY
+                  git push ${REMOTE_REPO} HEAD:main --force
+                  cd ../../../../
+              else
+                echo "You want to deploy automatically to $env, which is not development nor staging. This is not allowed."
+                exit 1
+              fi
+            done
+          else
+            if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then
+              cd $APP_SQUAD/${{ github.event.repository.name }}/region/${REGION}/${K8S_ENV_NAME}
               FILE_ENV=$(ls | grep ".env");cat $HOME/${K8S_ENV_NAME}-envfile.env > $FILE_ENV
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
               cat kustomization.yaml
