@@ -103,6 +103,7 @@ env:
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
   AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
+  REGION: ${{ inputs.region }}
 
 jobs:
   bump-release:
