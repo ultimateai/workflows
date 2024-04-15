@@ -396,7 +396,7 @@ jobs:
           K8S_ENV_NAME: ${{ env.AUTOMATIC_DEPLOYMENT_TO }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
 
-    - name: Update the Image tags for Preproduction Environment for US region
+      - name: Update the Image tags for Preproduction Environment for US region
         if: ${{ env.REGION != 'europe' }}
         run: |-
           if [[ $K8S_ENV_NAME == *","* ]]; then
