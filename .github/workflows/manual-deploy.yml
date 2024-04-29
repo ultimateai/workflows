@@ -186,7 +186,7 @@ jobs:
             fi
           fi
 
-      - name: Get env file and scheduler for updating k8s-manifest repo in case of non-europe region
+      - name: Get env file for updating k8s-manifest repo in case of non-europe region
         if: ${{ env.REGION != 'europe' }}
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
@@ -337,6 +337,8 @@ jobs:
             for app_name in "${array_app_names[@]}"
             do
               cd $APP_SQUAD/$app_name/region/$REGION/$ENVIRONMENT
+              echo "TEST"
+              cat $HOME/$app_name-envfile.env
               FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
               cat kustomization.yaml
