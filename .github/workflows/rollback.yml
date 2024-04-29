@@ -268,7 +268,7 @@ jobs:
               git config --local user.name $GITHUB_USER
               git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
               git push ${REMOTE_REPO} HEAD:main --force
-              cd ../../../../../
+              cd ../../../../
             done
           else
             if [[ "${SINGLE_APP_NAME}" ]]; then
@@ -306,7 +306,7 @@ jobs:
               git config --local user.name $GITHUB_USER
               git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
               git push ${REMOTE_REPO} HEAD:main --force
-              cd ../../../../
+              cd ../../../../../
             done
           else
             if [[ "${SINGLE_APP_NAME}" ]]; then
