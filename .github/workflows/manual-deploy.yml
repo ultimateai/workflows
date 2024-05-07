@@ -334,8 +334,7 @@ jobs:
             IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
             for app_name in "${array_app_names[@]}"
             do
-              cd $APP_SQUAD/$app_name/region/$REGION/$ENVIRONMENT
-              echo "TEST"
+              cd $APP_SQUAD/$app_name/region/$REGION/overlay/$ENVIRONMENT
               FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
               git config --local user.email $GITHUB_EMAIL
@@ -346,9 +345,9 @@ jobs:
             done
           else
             if [[ "${SINGLE_APP_NAME}" ]]; then
-              cd $APP_SQUAD/$SINGLE_APP_NAME/region/$REGION/$ENVIRONMENT
+              cd $APP_SQUAD/$SINGLE_APP_NAME/region/$REGION/overlay/$ENVIRONMENT
             else
-              cd $APP_SQUAD/${APP_NAMES}/region/$REGION/$ENVIRONMENT
+              cd $APP_SQUAD/${APP_NAMES}/region/$REGION/overlay/$ENVIRONMENT
             fi
             FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
