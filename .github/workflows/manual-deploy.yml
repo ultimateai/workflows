@@ -171,6 +171,9 @@ jobs:
                   cat "deployment_envs/$app_name/dev.env" > $HOME/eu-$app_name-envfile.env
                   cat "deployment_envs/$app_name/region/$REGION/dev.env" > $HOME/$REGION-$app_name-envfile.env
                 fi
+                echo "app_name: $app_name"
+                echo "REGION: $REGION"
+                echo "VALUE [[ -f "deployment_envs/$app_name/common.env" ]]"
                 if [[ -f "deployment_envs/$app_name/common.env" ]] || [[ -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
                   echo "Please delete deployment_envs/$app_name/common.env or deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
                 fi
@@ -186,6 +189,9 @@ jobs:
               cat "deployment_envs/dev.env" > $HOME/eu-envfile.env
               cat "deployment_envs/region/$REGION/dev.env" > $HOME/$REGION-envfile.env
             fi
+            echo "app_name: $app_name"
+            echo "REGION: $REGION"
+            echo "VALUE [[ -f "deployment_envs/region/$REGION/common.env" ]]"
             if [[ -f "deployment_envs/common.env" ]] || [[ -f "deployment_envs/region/$REGION/common.env ]]; then
               echo "Please delete deployment_envs/common.env or deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
             fi
