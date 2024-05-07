@@ -161,9 +161,6 @@ jobs:
               IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
               for app_name in "${array_app_names[@]}"
               do
-                echo "app_name: $app_name"
-                echo "REGION: $REGION"
-                echo "$[[ -f "deployment_envs/$app_name/common.env" ]]"
                 if [[ "${ENVIRONMENT}" = "production" ]]; then
                   cat "deployment_envs/$app_name/prod.env" > $HOME/eu-$app_name-envfile.env
                   cat "deployment_envs/$app_name/region/$REGION/prod.env" > $HOME/$REGION-$app_name-envfile.env
@@ -179,8 +176,6 @@ jobs:
                 fi
               done
             else
-              echo "app_name: $app_name"
-              echo "REGION: $REGION"
               if [[ "${ENVIRONMENT}" = "production" ]]; then
                 cat "deployment_envs/prod.env" > $HOME/eu-envfile.env
                 cat "deployment_envs/region/$REGION/prod.env" > $HOME/$REGION-envfile.env
