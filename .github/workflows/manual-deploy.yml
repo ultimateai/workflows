@@ -171,7 +171,7 @@ jobs:
                   cat "deployment_envs/$app_name/dev.env" > $HOME/eu-$app_name-envfile.env
                   cat "deployment_envs/$app_name/region/$REGION/dev.env" > $HOME/$REGION-$app_name-envfile.env
                 fi
-                if [[ -f "deployment_envs/$app_name/common.env" ]]; then
+                if [[ -f "deployment_envs/$app_name/common.env" || -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
                   echo "Please delete deployment_envs/$app_name/common.env or deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
                 fi
               done
@@ -273,7 +273,7 @@ jobs:
             do
               echo "Deploying in Europe region for $app_name"
               cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
-              FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+              FILE_ENV=$(ls | grep ".env");cat $HOME/eu-$app_name-envfile.env > $FILE_ENV
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
@@ -298,7 +298,7 @@ jobs:
             else
               cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
             fi
-            FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+            FILE_ENV=$(ls | grep ".env");cat $HOME/eu-envfile.env > $FILE_ENV
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
             git config --local user.email $GITHUB_EMAIL
             git config --local user.name $GITHUB_USER
