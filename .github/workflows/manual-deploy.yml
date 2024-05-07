@@ -155,7 +155,7 @@ jobs:
           fi
           echo "app_names=$APP_NAMES" >> $GITHUB_OUTPUT
 
-      - name: Get env file and scheduler for updating k8s-manifest repo in case of europe region
+      - name: Get env file for updating k8s-manifest repo
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
               IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
@@ -171,7 +171,7 @@ jobs:
                   cat "deployment_envs/$app_name/dev.env" > $HOME/eu-$app_name-envfile.env
                   cat "deployment_envs/$app_name/region/$REGION/dev.env" > $HOME/$REGION-$app_name-envfile.env
                 fi
-                if [[ -f "deployment_envs/$app_name/common.env" || -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
+                if [[ -f "deployment_envs/$app_name/common.env" ]] || [[ -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
                   echo "Please delete deployment_envs/$app_name/common.env or deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
                 fi
               done
@@ -186,7 +186,7 @@ jobs:
               cat "deployment_envs/dev.env" > $HOME/eu-envfile.env
               cat "deployment_envs/region/$REGION/dev.env" > $HOME/$REGION-envfile.env
             fi
-            if [[ -f "deployment_envs/common.env" || -f "deployment_envs/region/$REGION/common.env ]]; then
+            if [[ -f "deployment_envs/common.env" ]] || [[ -f "deployment_envs/region/$REGION/common.env ]]; then
               echo "Please delete deployment_envs/common.env or deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
             fi
           fi
