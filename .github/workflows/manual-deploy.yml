@@ -157,10 +157,13 @@ jobs:
 
       - name: Get env file for updating k8s-manifest repo
         run: |-
-          if [[ $APP_NAMES == *","* ]]; then
+            if [[ $APP_NAMES == *","* ]]; then
               IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
               for app_name in "${array_app_names[@]}"
               do
+                echo "app_name: $app_name"
+                echo "REGION: $REGION"
+                echo "$[[ -f "deployment_envs/$app_name/common.env" ]]"
                 if [[ "${ENVIRONMENT}" = "production" ]]; then
                   cat "deployment_envs/$app_name/prod.env" > $HOME/eu-$app_name-envfile.env
                   cat "deployment_envs/$app_name/region/$REGION/prod.env" > $HOME/$REGION-$app_name-envfile.env
@@ -171,31 +174,27 @@ jobs:
                   cat "deployment_envs/$app_name/dev.env" > $HOME/eu-$app_name-envfile.env
                   cat "deployment_envs/$app_name/region/$REGION/dev.env" > $HOME/$REGION-$app_name-envfile.env
                 fi
-                echo "app_name: $app_name"
-                echo "REGION: $REGION"
-                echo "VALUE [[ -f "deployment_envs/$app_name/common.env" ]]"
                 if [[ -f "deployment_envs/$app_name/common.env" ]] || [[ -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
                   echo "Please delete deployment_envs/$app_name/common.env or deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
                 fi
               done
-          else
-            if [[ "${ENVIRONMENT}" = "production" ]]; then
-              cat "deployment_envs/prod.env" > $HOME/eu-envfile.env
-              cat "deployment_envs/region/$REGION/prod.env" > $HOME/$REGION-envfile.env
-            elif [[ "${ENVIRONMENT}" = "staging" ]]; then
-              cat "deployment_envs/stage.env" > $HOME/eu-envfile.env
-              cat "deployment_envs/region/$REGION/stage.env" > $HOME/$REGION-envfile.env
             else
-              cat "deployment_envs/dev.env" > $HOME/eu-envfile.env
-              cat "deployment_envs/region/$REGION/dev.env" > $HOME/$REGION-envfile.env
+              echo "app_name: $app_name"
+              echo "REGION: $REGION"
+              if [[ "${ENVIRONMENT}" = "production" ]]; then
+                cat "deployment_envs/prod.env" > $HOME/eu-envfile.env
+                cat "deployment_envs/region/$REGION/prod.env" > $HOME/$REGION-envfile.env
+              elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+                cat "deployment_envs/stage.env" > $HOME/eu-envfile.env
+                cat "deployment_envs/region/$REGION/stage.env" > $HOME/$REGION-envfile.env
+              else
+                cat "deployment_envs/dev.env" > $HOME/eu-envfile.env
+                cat "deployment_envs/region/$REGION/dev.env" > $HOME/$REGION-envfile.env
+              fi
+              if [[ -f "deployment_envs/common.env" ]] || [[ -f "deployment_envs/region/$REGION/common.env ]]; then
+                echo "Please delete deployment_envs/common.env or deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
+              fi
             fi
-            echo "app_name: $app_name"
-            echo "REGION: $REGION"
-            echo "VALUE [[ -f "deployment_envs/region/$REGION/common.env" ]]"
-            if [[ -f "deployment_envs/common.env" ]] || [[ -f "deployment_envs/region/$REGION/common.env ]]; then
-              echo "Please delete deployment_envs/common.env or deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
-            fi
-          fi
 
       - id: fetch_latest_release
         uses: ultimateai/fetch-latest-release@2.1.1
