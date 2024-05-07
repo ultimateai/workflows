@@ -186,7 +186,7 @@ jobs:
                 cat "deployment_envs/dev.env" > $HOME/eu-envfile.env
                 cat "deployment_envs/region/$REGION/dev.env" > $HOME/$REGION-envfile.env
               fi
-              if [[ -f "deployment_envs/common.env" ]]; then
+              if [[ -f "deployment_envs/common.env" || -f "deployment_envs/region/$REGION/common.env" ]]; then
                 echo "Please delete deployment_envs/common.env or deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
               fi
             fi
@@ -265,8 +265,7 @@ jobs:
           JSON_CONTENT=$(echo "${{ env.FILTERED_CHANGELOG_CONTENT }}" | sed 's/$/\\n/' | tr -d '\n')
           echo "changelog_json=$JSON_CONTENT" >> $GITHUB_OUTPUT
 
-      - name: Update the Image tags and env files for Selected Environment in europe region
-        if: ${{ env.REGION == 'europe' }}
+      - name: Update the Image tags and env files for Selected Environment
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
             IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
