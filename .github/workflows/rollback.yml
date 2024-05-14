@@ -47,8 +47,8 @@ on:
         region:
           required: false
           type: string
-          description: "Region name to deploy - europe or us-central1, defaults to europe"
-          default: "europe"
+          description: "Additional region (apart from europe) to deploy - default is us-west1"
+          default: "us-west1"
 
 
 env:
@@ -149,97 +149,44 @@ jobs:
           fi
           echo "app_names=$APP_NAMES" >> $GITHUB_OUTPUT
 
-      - name: Get environment.env file for updating k8s-manifest repo in europe region scenario
-        if: ${{ env.REGION == 'europe' }}
+      - name: Get env file for updating k8s-manifest repo
         run: |-
-          if [[ $APP_NAMES == *","* ]]; then
+            if [[ $APP_NAMES == *","* ]]; then
               IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
               for app_name in "${array_app_names[@]}"
               do
                 if [[ "${ENVIRONMENT}" = "production" ]]; then
-                  cat "deployment_envs/$app_name/prod.env" > $HOME/$app_name-envfile.env
+                  cat "deployment_envs/$app_name/prod.env" > $HOME/eu-$app_name-envfile.env
+                  cat "deployment_envs/$app_name/region/$REGION/prod.env" > $HOME/$REGION-$app_name-envfile.env
                 elif [[ "${ENVIRONMENT}" = "staging" ]]; then
-                  cat "deployment_envs/$app_name/stage.env" > $HOME/$app_name-envfile.env
+                  cat "deployment_envs/$app_name/stage.env" > $HOME/eu-$app_name-envfile.env
                 else
-                  cat "deployment_envs/$app_name/dev.env" > $HOME/$app_name-envfile.env
+                  cat "deployment_envs/$app_name/dev.env" > $HOME/eu-$app_name-envfile.env
                 fi
-                if [[ -f "deployment_envs/$app_name/common.env" ]]; then
-                  echo "Please delete deployment_envs/$app_name/common.env" >> $GITHUB_STEP_SUMMARY
+                if [[ -f "deployment_envs/$app_name/common.env" || -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
+                  echo "Please delete deployment_envs/$app_name/common.env or deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
                 fi
               done
-          else
-            if [[ "${ENVIRONMENT}" = "production" ]]; then
-              cat "deployment_envs/prod.env" > $HOME/envfile.env
-            elif [[ "${ENVIRONMENT}" = "staging" ]]; then
-              cat "deployment_envs/stage.env" > $HOME/envfile.env
             else
-              cat "deployment_envs/dev.env" > $HOME/envfile.env
+              if [[ "${ENVIRONMENT}" = "production" ]]; then
+                cat "deployment_envs/prod.env" > $HOME/eu-envfile.env
+                cat "deployment_envs/region/$REGION/prod.env" > $HOME/$REGION-envfile.env
+              elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+                cat "deployment_envs/stage.env" > $HOME/eu-envfile.env
+              else
+                cat "deployment_envs/dev.env" > $HOME/eu-envfile.env
+              fi
+              if [[ -f "deployment_envs/common.env" || -f "deployment_envs/region/$REGION/common.env" ]]; then
+                echo "Please delete deployment_envs/common.env or deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
+              fi
             fi
-            if [[ -f "deployment_envs/common.env" ]]; then
-              echo "Please delete deployment_envs/common.env" >> $GITHUB_STEP_SUMMARY
-            fi
-          fi
-
-      - name: Get environment.env file for updating k8s-manifest repo in non-europe region scenario
-        if: ${{ env.REGION != 'europe' }}
-        run: |-
-          if [[ $APP_NAMES == *","* ]]; then
-              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
-              for app_name in "${array_app_names[@]}"
-              do
-                if [[ "${ENVIRONMENT}" = "production" ]]; then
-                  cat "deployment_envs/$app_name/region/$REGION/prod.env" > $HOME/$app_name-envfile.env
-                elif [[ "${ENVIRONMENT}" = "staging" ]]; then
-                  cat "deployment_envs/$app_name/region/$REGION/stage.env" > $HOME/$app_name-envfile.env
-                else
-                  cat "deployment_envs/$app_name/region/$REGION/dev.env" > $HOME/$app_name-envfile.env
-                fi
-                if [[ -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
-                  echo "Please delete deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
-                fi
-              done
-          else
-            if [[ "${ENVIRONMENT}" = "production" ]]; then
-              cat "deployment_envs/region/$REGION/prod.env" > $HOME/envfile.env
-            elif [[ "${ENVIRONMENT}" = "staging" ]]; then
-              cat "deployment_envs/region/$REGION/stage.env" > $HOME/envfile.env
-            else
-              cat "deployment_envs/region/$REGION/dev.env" > $HOME/envfile.env
-            fi
-            if [[ -f "deployment_envs/region/$REGION/common.env" ]]; then
-              echo "Please delete deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
-            fi
-          fi
 
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v4
         with:
           repository: ${{ env.K8S_MANIFESTS_REPO }}
           token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
-
-      # - name: Check if version is already deployed in stage, if trying to deploy in prod
-      #   if: ${{ (env.ENVIRONMENT == 'production') }}
-      #   run: |-
-      #     if [[ "${SINGLE_APP_NAME}" ]]; then
-      #         STAGE_VERSION=$(cat $APP_SQUAD/$SINGLE_APP_NAME/overlay/staging/kustomization.yaml | yq .images.0.newTag)
-      #         if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
-      #           echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
-      #           echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
-      #           exit 1
-      #         fi
-      #     else
-      #       STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
-      #       if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
-      #         echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
-      #         echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
-      #         exit 1
-      #       fi
-      #     fi
-      #   env:
-      #     TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
-      #     APP_NAMES: ${{ steps.app_names.outputs.app_names }}
-      #     SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
-
+   
       - name: Check old deployed version in env to improve slack message
         id: get_old_version
         run: |-
@@ -253,19 +200,19 @@ jobs:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
 
-      - name: Update the Image tags for Selected Environment in case of europe region
-        if: ${{ env.REGION == 'europe' }}
+      - name: Update the Image tags and env files for PREPROD in europe region
+        if: ${{ env.ENVIRONMENT != 'production' }}
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
             IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
             for app_name in "${array_app_names[@]}"
             do
               cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
-              FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+              FILE_ENV=$(ls | grep ".env");cat $HOME/eu-$app_name-envfile.env > $FILE_ENV
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
-              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+              git commit -m "rollback $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
               git push ${REMOTE_REPO} HEAD:main --force
               cd ../../../../
             done
@@ -275,11 +222,11 @@ jobs:
             else
               cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
             fi
-            FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+            FILE_ENV=$(ls | grep ".env");cat $HOME/eu-envfile.env > $FILE_ENV
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
             git config --local user.email $GITHUB_EMAIL
             git config --local user.name $GITHUB_USER
-            git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+            git commit -m "rollback image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
             git push ${REMOTE_REPO} HEAD:main --force
           fi
         env:
@@ -289,34 +236,59 @@ jobs:
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
           SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
 
-      - name: Update the Image tags for Selected Environment in case of non-europe region
-        if: ${{ env.REGION != 'europe' }}
+      - name: Update the Image tags and env files for PROD
+        if: ${{ env.ENVIRONMENT == 'production' }}
         run: |-
           if [[ $APP_NAMES == *","* ]]; then
             IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
             for app_name in "${array_app_names[@]}"
             do
-              cd $APP_SQUAD/$app_name/region/$REGION/overlay/$ENVIRONMENT
-              FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-envfile.env > $FILE_ENV
+              echo "Deploying in Europe region for $app_name"
+              cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
+              FILE_ENV=$(ls | grep ".env");cat $HOME/eu-$app_name-envfile.env > $FILE_ENV
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
-              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+              git commit -m "rollback EU $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
               git push ${REMOTE_REPO} HEAD:main --force
-              cd ../../../../../
+              cd ../../../../
+              echo "Deployed in Europe region for $app_name"
+              echo "Deploying in $REGION region for $app_name"
+              cd $APP_SQUAD/$app_name/region/$REGION/overlay/$ENVIRONMENT
+              FILE_ENV=$(ls | grep ".env");cat $HOME/$REGION-$app_name-envfile.env > $FILE_ENV
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "rollback US $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+              git push ${REMOTE_REPO} HEAD:main --force
+              cd ../../../../../../
+              echo "Deployed in $REGION region for $app_name"
             done
           else
+            if [[ "${SINGLE_APP_NAME}" ]]; then
+              cd $APP_SQUAD/$SINGLE_APP_NAME/overlay/$ENVIRONMENT
+            else
+              cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
+            fi
+            FILE_ENV=$(ls | grep ".env");cat $HOME/eu-envfile.env > $FILE_ENV
+            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+            git config --local user.email $GITHUB_EMAIL
+            git config --local user.name $GITHUB_USER
+            git commit -m "rollback EU image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+            git push ${REMOTE_REPO} HEAD:main --force
+            cd ../../../../
             if [[ "${SINGLE_APP_NAME}" ]]; then
               cd $APP_SQUAD/$SINGLE_APP_NAME/region/$REGION/overlay/$ENVIRONMENT
             else
               cd $APP_SQUAD/${APP_NAMES}/region/$REGION/overlay/$ENVIRONMENT
             fi
-            FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+            FILE_ENV=$(ls | grep ".env");cat $HOME/$REGION-envfile.env > $FILE_ENV
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
             git config --local user.email $GITHUB_EMAIL
             git config --local user.name $GITHUB_USER
-            git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+            git commit -m "rollback US image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT in $REGION" >> $GITHUB_STEP_SUMMARY
             git push ${REMOTE_REPO} HEAD:main --force
+            cd ../../../../../../
           fi
         env:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
