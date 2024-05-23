@@ -312,7 +312,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` \n *WARNING!!* This is a rollback! Please add any information under this thread. "
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ github.actor }} , `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` (`europe` and `${{ env.REGION }}`) \n *WARNING!!* This is a rollback! Please add any information under this thread. "
                   }
                 }
               ]
