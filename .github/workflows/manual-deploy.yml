@@ -384,7 +384,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "Deployment to `europe` and `${{ env.REGION }}` of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ env.USER_NAME }}, `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}`"
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ env.USER_NAME }}, `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` (`europe` and `${{ env.REGION }}`)"
                   }
                 }
               ]
