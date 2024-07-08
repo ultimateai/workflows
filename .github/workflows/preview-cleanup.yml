@@ -32,8 +32,8 @@ jobs:
         shell: bash
         run: |-
           cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
-          rm -rf preview_branch_name-deployment.yaml
-          rm -rf preview_branch_name-service.yaml
+          rm -f preview_branch_name-deployment.yaml
+          rm -f preview_branch_name-service.yaml
         env:
           K8S_ENV_NAME: "development"
           preview_branch_name: ${{ inputs.preview_branch_name }}
