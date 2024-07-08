@@ -38,7 +38,7 @@ jobs:
             workload_identity_provider: "${{ inputs.development_gke_wip }}"
             service_account: ${{ inputs.development_gke_service_account }}
       - name: 'Set up cloud sdk'
-        uses: 'google-github-actions/setup-gcloud@v0'
+        uses: 'google-github-actions/setup-gcloud@v1'
       - name: "Get current configmap for dashboard-frontend"
         id: "get_configmap"
         run: |-
