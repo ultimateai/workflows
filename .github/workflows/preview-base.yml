@@ -1,0 +1,27 @@
+name: Preview Base Callable Workflow
+
+on:
+  workflow_call:
+    outputs:
+      branch_short_name:
+        description: "Get the short name of the branch"
+        value: ${{ jobs.get_branch_short_name.outputs.short_name }}
+
+jobs:
+  get_branch_short_name:
+    name: Get Branch Short Name
+    runs-on: preemptible-runners
+    permissions:
+      contents: "read"
+      id-token: "write"
+    outputs:
+      short_name: ${{ steps.branch_short_name.outputs.branch_short_name }}
+    steps:
+      - name: Branch Short Name
+        id: branch_short_name
+        shell: bash
+        run: |-
+          BRANCH_SHORT_NAME=$(echo "${GITHUB_HEAD_REF}" | grep -o -E "[A-Z]+-[0-9]+"|tr '[:upper:]' '[:lower:]'|  tr '/' '-')
+          echo "branch_short_name=${BRANCH_SHORT_NAME}" >> $GITHUB_OUTPUT
+
+
