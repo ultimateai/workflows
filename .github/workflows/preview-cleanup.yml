@@ -1,0 +1,106 @@
+name: Preview Deployment Cleanup Callable Workflow
+
+on:
+  workflow_call: [ ]
+    inputs:
+        image_tag:
+          description: 'Tag to set on the docker image'
+          required: true
+        github_token:
+          description: 'GitHub token'
+          required: true
+        preview_branch_name:
+          description: 'Short name for the branch for preview environment'
+          required: true
+        image_name:
+          description: 'Name of the image'
+          required: true
+
+jobs:
+  preview_cleanup:
+    runs-on: preemptible-runners
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: "Checkout dashboard-frontend k8s manifests"
+        uses: actions/checkout@v4
+        with:
+          repository: "ultimate/k8s-manifests"
+          token: ${{ inputs.github_token }}
+      - name: "Delete preview files"
+        shell: bash
+        run: |-
+          cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
+          rm -rf preview_branch_name-deployment.yaml
+          rm -rf preview_branch_name-service.yaml
+        env:
+          K8S_ENV_NAME: "development"
+          preview_branch_name: ${{ inputs.preview_branch_name }}
+    
+      - name: Remove the entry from kustomize file for the preview environment 
+        run: |-
+          cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
+          check_deployment_file=$(preview_deployment_file=$preview_branch_name-deployment.yaml  yq '(.resources[] | select (test(env(preview_deployment_file)))' kustomization.yaml)
+          if [[ -z $check_deployment_file ]];then
+            echo "No entries found for $preview_branch_name-deployment.yaml."
+          else
+            echo "Entries found for $preview_branch_name-deployment.yaml. Executing Cleanup"
+            sed -i "/$preview_branch_name-deployment.yaml/d" kustomization.yaml 
+          fi                   
+          check_service_file=$(preview_service_file=$preview_branch_name-service.yaml yq '(.resources[] | select (test(env(preview_service_file)))' kustomization.yaml)
+          if [[ -z $check_service_file ]];then
+            echo "No entries found for $preview_branch_name-service.yaml"
+          else
+            echo "Entries found for $preview_branch_name-service.yaml. Executing Cleanup"
+            sed -i "/$preview_branch_name-service.yaml/d" kustomization.yaml 
+          fi 
+        env:
+          K8S_ENV_NAME: development
+          preview_branch_name: ${{inputs.preview_branch_name}}
+        shell: bash
+
+      - name: Remove the preview path from ingress file 
+        run: |-
+          cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
+          preview_path=$preview_branch_name
+          check_path=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' ingress-patch.yaml)
+          if [[ -z $check_path ]]; then
+          echo "No Entries found /$preview_branch_name in ingress path no action required"
+          else
+          echo "Entries found for /$preview_branch_name in path ingress.yaml. Doing the clean up"
+          preview_path=/$preview_branch_name/.* preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules.[0].http.paths -=[{"path":env(preview_path),"pathType": "Prefix","backend": {"service": {"name":env(preview_service),"port":{"number":3000}}}}]' ingress-patch.yaml
+          fi
+        env:
+          K8S_ENV_NAME: development
+          preview_branch_name: ${{inputs.preview_branch_name}}
+        shell: bash
+
+      - name: Commit the files
+        run: |-
+          cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME} 
+          git config --local user.email "86783263+ultimateai-bot@users.noreply.github.com"
+          if [ -e $preview_branch_name-deployment.yaml ]; then
+            echo "File $preview_branch_name-deployment.yaml found. Executing git rm for $preview_branch_name-deployment.yaml."
+            git rm $preview_branch_name-deployment.yaml
+          else
+            echo "File $preview_branch_name-deployment.yaml not found. No action required."
+          fi
+          if [ -e $preview_branch_name-service.yaml ]; then
+            echo "File $preview_branch_name-service.yaml found. Executing git rm for $preview_branch_name-service.yaml."
+            git rm $preview_branch_name-service.yaml
+          else
+            echo "File $preview_branch_name-service.yaml not found. No action required."
+          fi
+          git config --local user.name "ultimateai-bot"
+          git commit -m "Doing the clean up for Preview Env for ${preview_branch_name}" -a || echo "Nothing to commit for ${preview_branch_name}, already cleaned!" >> $GITHUB_STEP_SUMMARY
+          git push ${REMOTE_REPO} HEAD:main --force
+        env:
+          REMOTE_REPO: https://${{ inputs.github_token }}@github.com/ultimateai/k8s-manifests.git
+          K8S_ENV_NAME: development
+          preview_branch_name: ${{inputs.preview_branch_name}}
+          TAGS: ${{inputs.image_tag}}
+          IMAGE_NAME: ${{inputs.image_name}}
+        shell: bash
+
+    
