@@ -10,7 +10,7 @@ on:
 jobs:
   get_branch_short_name:
     name: Get Branch Short Name
-    runs-on: preemptible-runners
+    runs-on: frontend-runners
     permissions:
       contents: "read"
       id-token: "write"
