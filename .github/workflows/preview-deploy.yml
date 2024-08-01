@@ -1,26 +1,32 @@
 name: Preview Deploy Callable Workflow
 
 on:
-  workflow_call: [ ]
+  workflow_call:
     inputs:
       image_tag:
         description: 'Tag to set on the docker image'
         required: true
+        type: string
       github_token:
         description: 'GitHub token'
         required: true
+        type: string
       preview_branch_name:
         description: 'Short name for the branch for preview environment'
         required: true
+        type: string
       image_name:
         description: 'Name of the image'
         required: true
+        type: string
       development_gke_wip:
         description: 'Name of the development GKE WIP'
-        required: true  
+        required: true
+        type: string 
       development_gke_service_account:
         description: 'Name of the development GKE WIP'
         required: true
+        type: string
 
 jobs:
   deploy_dashboard-frontend:
