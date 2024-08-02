@@ -7,10 +7,10 @@ on:
         description: 'Tag to set on the docker image'
         required: true
         type: string
-      github_token:
-        description: 'GitHub token'
-        required: true
-        type: string
+    #   github_token:
+    #     description: 'GitHub token'
+    #     required: true
+    #     type: string
       preview_branch_name:
         description: 'Short name for the branch for preview environment'
         required: true
@@ -19,14 +19,24 @@ on:
         description: 'Name of the image'
         required: true
         type: string
+    #   development_gke_wip:
+    #     description: 'Name of the development GKE WIP'
+    #     required: true
+    #     type: string 
+    #   development_gke_service_account:
+    #     description: 'Name of the development GKE WIP'
+    #     required: true
+    #     type: string
+    secrets:
+      github_token:
+        description: 'GitHub token'
+        required: true
       development_gke_wip:
         description: 'Name of the development GKE WIP'
         required: true
-        type: string 
       development_gke_service_account:
         description: 'Name of the development GKE WIP'
         required: true
-        type: string
 
 jobs:
   deploy_dashboard-frontend:
@@ -40,8 +50,8 @@ jobs:
         uses: "google-github-actions/auth@v1"
         with:
           token_format: "access_token"
-          workload_identity_provider: "${{ inputs.development_gke_wip }}"
-          service_account: ${{ inputs.development_gke_service_account }}
+          workload_identity_provider: "${{ secrets.development_gke_wip }}"
+          service_account: ${{ secrets.development_gke_service_account }}
 
       - name: 'Set up cloud sdk'
         uses: 'google-github-actions/setup-gcloud@v1'
@@ -95,7 +105,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ultimateai/k8s-manifests
-          token: ${{ inputs.github_token }}
+          token: ${{ secrets.github_token }}
       
       - name: Add the Preview files deployment files 
         run: |-
@@ -152,7 +162,7 @@ jobs:
           git commit -m "Adding $preview_branch_name-deployment.yaml file with ${IMAGE_NAME}:${TAGS} & $preview_branch_name-service.yaml file" -a
           git push ${REMOTE_REPO} HEAD:main --force
         env:
-          REMOTE_REPO: https://${{ inputs.github_token }}@github.com/ultimateai/k8s-manifests.git
+          REMOTE_REPO: https://${{ secrets.github_token }}@github.com/ultimateai/k8s-manifests.git
           K8S_ENV_NAME: development
           preview_branch_name: ${{ inputs.preview_branch_name }} 
           TAGS: ${{ inputs.image_tag }}
