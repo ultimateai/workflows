@@ -28,7 +28,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: frontend-runners
+    runs-on: preemptible-runners
     permissions:
       contents: read
       id-token: write
