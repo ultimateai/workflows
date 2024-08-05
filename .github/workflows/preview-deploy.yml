@@ -27,7 +27,7 @@ on:
         required: true
 
 jobs:
-  deploy_dashboard-frontend:
+  deploy:
     runs-on: frontend-runners
     permissions:
       contents: read
