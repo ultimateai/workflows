@@ -1,4 +1,4 @@
-name: Preview Deploy Callable Workflow
+name: "Preview Deploy Workflow"
 
 on:
   workflow_call:
