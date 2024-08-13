@@ -69,12 +69,15 @@ jobs:
 
       ##  Needs to be added so as to pull common Libs from bitbucket ##
       - name: Install SSH key
+        if: ${{ env.SSH_KEY != '' }}
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.BB_SSH_KEY }}
           name: id_rsa
           known_hosts: bitbucket.org
           if_key_exists: ignore
+        env: 
+            SSH_KEY: ${{secrets.BB_SSH_KEY}}
 
       - name: Cache dependencies
         uses: actions/cache@v3
