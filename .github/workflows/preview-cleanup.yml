@@ -5,7 +5,7 @@ on:
     inputs:
       image_tag:
         description: 'Tag to set on the docker image'
-        required: true
+        required: false
         type: string
       preview_branch_name:
         description: 'Short name for the branch for preview environment'
