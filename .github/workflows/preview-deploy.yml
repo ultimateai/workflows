@@ -112,7 +112,7 @@ jobs:
         shell: bash 
       - name: Update the kustomize file of the preview environment 
         run: |-
-          cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
+          cd frontend/dashboard-frontendd/overlay/${K8S_ENV_NAME}
           check_deployment_file=$(preview_deployment_file=$preview_branch_name-deployment.yaml  yq '(.resources[] | select (test(env(preview_deployment_file)))' kustomization.yaml)
           if [[ -z $check_deployment_file ]];then
               echo "Entries Not found for $preview_branch_name-deployment.yaml. Adding Entry for $preview_branch_name-deployment.yaml."
