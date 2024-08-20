@@ -52,10 +52,12 @@ jobs:
           echo "configmap_name=$configmap_name" >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Update the apps in deployment file and service file with branch names
+      - name: Update the apps in deployment, service, backend_policy & health_check_policy files with branch names
         run: |-
           sed -i "s/branch-name/$preview_branch_name/g" "preview_deploy/deployment.yaml"
           sed -i "s/branch-name/$preview_branch_name/g" "preview_deploy/service.yaml"
+          sed -i "s/branch-name/$preview_branch_name/g" "preview_deploy/backend_policy.yaml"
+          sed -i "s/branch-name/$preview_branch_name/g" "preview_deploy/health_check_policy.yaml"
         env:
           preview_branch_name: ${{ inputs.preview_branch_name }}
         shell: bash
@@ -67,7 +69,7 @@ jobs:
           current_configmap_name: ${{ steps.get_configmap.outputs.configmap_name }}
         shell: bash
         
-      - name: Update the image tag in deploymet file
+      - name: Update the image tag in deployment file
         run: |-
           sed -i "s/tag-name/$image_tag/g" "preview_deploy/deployment.yaml"
         env:
@@ -88,6 +90,22 @@ jobs:
           path: preview_deploy/service.yaml    
       - name: Echo service file
         run: echo "${{ steps.service_file.outputs.content }}"
+        shell: bash
+      - name: Read backend policy file
+        id: backend_policy_file
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: preview_deploy/backend_policy.yaml
+      - name: Echo backend policy file
+        run: echo "${{ steps.backend_policy_file.outputs.content }}"
+        shell: bash
+      - name: Read health check policy file
+        id: health_check_policy_file
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: preview_deploy/health_check_policy.yaml
+      - name: Echo health check policy file
+        run: echo "${{ steps.health_check_policy_file.outputs.content }}"
         shell: bash       
       - name: "Checkout dashboard-frontend k8s manifests"
         uses: actions/checkout@v3
@@ -100,13 +118,21 @@ jobs:
           cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
           touch $preview_branch_name-deployment.yaml
           touch $preview_branch_name-service.yaml
+          touch $preview_branch_name-backend_policy.yaml
+          touch $preview_branch_name-health_check_policy.yaml
           cat /dev/null > $preview_branch_name-deployment.yaml
           cat /dev/null > $preview_branch_name-service.yaml
+          cat /dev/null > $preview_branch_name-backend_policy.yaml
+          cat /dev/null > $preview_branch_name-health_check_policy.yaml
           echo -e "$deployment_file" >> $preview_branch_name-deployment.yaml
           echo -e "$service_file" >> $preview_branch_name-service.yaml
+          echo -e "$backend_policy_file" >> $preview_branch_name-backend_policy.yaml
+          echo -e "$health_check_policy_file" >> $preview_branch_name-health_check_policy.yaml
         env:
           service_file: ${{ steps.service_file.outputs.content }}
           deployment_file: ${{ steps.deployment_file.outputs.content }}
+          backend_policy_file: ${{ steps.backend_policy_file.outputs.content }}
+          health_check_policy_file: ${{ steps.health_check_policy_file.outputs.content }}
           preview_branch_name: ${{ inputs.preview_branch_name }} 
           K8S_ENV_NAME: development
         shell: bash 
@@ -126,26 +152,51 @@ jobs:
               preview_service_file=$preview_branch_name-service.yaml yq -i '.resources += env(preview_service_file)' kustomization.yaml
           else
               echo "Entries found for $preview_branch_name-service.yaml. No action required."
+          fi
+          check_backend_policy_file=$(preview_backend_policy_file=$preview_branch_name-backend_policy.yaml yq '(.resources[] | select (test(env(preview_backend_policy_file)))' kustomization.yaml)
+          if [[ -z $check_backend_policy_file ]];then
+              echo "Entries Not found for $preview_branch_name-backend_policy.yaml. Adding Entry for $preview_branch_name-backend_policy.yaml."
+              preview_backend_policy_file=$preview_branch_name-backend_policy.yaml yq -i '.resources += env(preview_backend_policy_file)' kustomization.yaml
+          else
+              echo "Entries found for $preview_branch_name-backend_policy.yaml. No action required."
+          fi
+          check_health_check_policy_file=$(preview_health_check_policy_file=$preview_branch_name-health_check_policy.yaml yq '(.resources[] | select (test(env(preview_health_check_policy_file)))' kustomization.yaml)
+          if [[ -z $check_health_check_policy_file ]];then
+              echo "Entries Not found for $preview_branch_name-health_check_policy.yaml. Adding Entry for $preview_branch_name-health_check_policy.yaml."
+              preview_health_check_policy_file=$preview_branch_name-health_check_policy.yaml yq -i '.resources += env(preview_health_check_policy_file)' kustomization.yaml
+          else
+              echo "Entries found for $preview_branch_name-health_check_policy.yaml. No action required."
           fi           
         env:
           K8S_ENV_NAME: development
           preview_branch_name: ${{ inputs.preview_branch_name }} 
         shell: bash
-
-      - name: Update the ingress file of the preview environment path
+        
+      - name: Update the ingress and http-route files of the preview environment path
         run: |-
           cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
           preview_path=$preview_branch_name
-          check_path=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' ingress-patch.yaml)
-          if [[ -z $check_path ]]; then
+          check_path_ingress=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' ingress-patch.yaml)
+          if [[ -z $check_path_ingress ]]; then
             echo "No Entries found /$preview_branch_name in ingress path. Adding the required path."
             preview_path=/$preview_branch_name/.* preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules.[0].http.paths +=[{"path":env(preview_path),"pathType": "Prefix","backend": {"service": {"name":env(preview_service),"port":{"number":3000}}}}]' ingress-patch.yaml
           else
             echo "Entries found for /$preview_branch_name in path ingress.yaml. No action required."
-          fi          
+          fi
+
+          check_path_route=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' http_route.yaml)
+          if [[ -z $check_path_route ]]; then
+            echo "No Entries found /$preview_branch_name in http_route path. Adding the required path."
+            preview_path=/$preview_branch_name/.* preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules.[0].matches += [{"path": {"type": "PathPrefix", "value": "/"}, "backendRefs": [{"kind": "Service", "name": env(preview_service), "port": 3000}]}]' http_route.yaml
+          else
+            echo "Entries found for /$preview_branch_name in path http_route.yaml. No action required."
+          fi
+          
           git config --local user.email "86783263+ultimateai-bot@users.noreply.github.com"
           git add $preview_branch_name-deployment.yaml
           git add $preview_branch_name-service.yaml
+          git add $preview_branch_name-backend_policy.yaml
+          git add $preview_branch_name-health_check_policy.yaml
           git config --local user.name "ultimateai-bot"
           git commit -m "Adding $preview_branch_name-deployment.yaml file with ${IMAGE_NAME}:${TAGS} & $preview_branch_name-service.yaml file" -a
           git push ${REMOTE_REPO} HEAD:main --force
@@ -154,4 +205,4 @@ jobs:
           K8S_ENV_NAME: development
           preview_branch_name: ${{ inputs.preview_branch_name }} 
           TAGS: ${{ inputs.image_tag }}
-        shell: bash 
+        shell: bash
