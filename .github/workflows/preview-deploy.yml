@@ -187,11 +187,10 @@ jobs:
           check_path_route=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' http_route.yaml)
           if [[ -z $check_path_route ]]; then
             echo "No Entries found /$preview_branch_name in http_route path. Adding the required path."
-            preview_path=/$preview_branch_name preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules |= (if . == null then [] else . end) | .spec.rules[0] |= (if . == null then {} else . end) | .spec.rules[0] += [{"matches":[{"path": {"type": "PathPrefix", "value": env(preview_path)}}], "backendRefs": [{"kind": "Service", "name": strenv(preview_service), "port": 3000}]}]' http_route.yaml
+            preview_path=/$preview_branch_name preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules |= (if . == null then [] else . end) | .spec.rules[0] |= (if . == null then {} else . end) | .spec.rules[0] += [{"matches":[{"path": {"type": "PathPrefix", "value":strenv(preview_path)}}], "backendRefs": [{"kind": "Service", "name":strenv(preview_service), "port": 3000}]}]' http_route.yaml
           else
             echo "Entries found for /$preview_branch_name in path http_route.yaml. No action required."
           fi
-          
           git config --local user.email "86783263+ultimateai-bot@users.noreply.github.com"
           git add $preview_branch_name-deployment.yaml
           git add $preview_branch_name-service.yaml
