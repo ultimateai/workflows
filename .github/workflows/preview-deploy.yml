@@ -171,19 +171,35 @@ jobs:
           K8S_ENV_NAME: development
           preview_branch_name: ${{ inputs.preview_branch_name }} 
         shell: bash
+
+      # - name: Update the ingress file of the preview environment path
+      #   run: |-
+      #     cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
+      #     preview_path=$preview_branch_name
+      #     check_path=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' ingress-patch.yaml)
+      #     if [[ -z $check_path ]]; then
+      #       echo "No Entries found /$preview_branch_name in ingress path. Adding the required path."
+      #       preview_path=/$preview_branch_name/.* preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules.[0].http.paths +=[{"path":env(preview_path),"pathType": "Prefix","backend": {"service": {"name":env(preview_service),"port":{"number":3000}}}}]' ingress-patch.yaml
+      #     else
+      #       echo "Entries found for /$preview_branch_name in path ingress.yaml. No action required."
+      #     fi          
+      #     git config --local user.email "86783263+ultimateai-bot@users.noreply.github.com"
+      #     git add $preview_branch_name-deployment.yaml
+      #     git add $preview_branch_name-service.yaml
+      #     git config --local user.name "ultimateai-bot"
+      #     git commit -m "Adding $preview_branch_name-deployment.yaml file with ${IMAGE_NAME}:${TAGS} & $preview_branch_name-service.yaml file" -a
+      #     git push ${REMOTE_REPO} HEAD:main --force
+      #   env:
+      #     REMOTE_REPO: https://${{ secrets.repo_token }}@github.com/ultimateai/k8s-manifests.git
+      #     K8S_ENV_NAME: development
+      #     preview_branch_name: ${{ inputs.preview_branch_name }} 
+      #     TAGS: ${{ inputs.image_tag }}
+      #   shell: bash 
         
-      - name: Update the ingress and http-route files of the preview environment path
+      - name: Update the http-route file of the preview environment path
         run: |-
           cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
           preview_path=$preview_branch_name
-          check_path_ingress=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' ingress-patch.yaml)
-          if [[ -z $check_path_ingress ]]; then
-            echo "No Entries found /$preview_branch_name in ingress path. Adding the required path."
-            preview_path=/$preview_branch_name/.* preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules.[0].http.paths +=[{"path":env(preview_path),"pathType": "Prefix","backend": {"service": {"name":env(preview_service),"port":{"number":3000}}}}]' ingress-patch.yaml
-          else
-            echo "Entries found for /$preview_branch_name in path ingress.yaml. No action required."
-          fi
-
           check_path_route=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' http_route.yaml)
           if [[ -z $check_path_route ]]; then
             echo "No Entries found /$preview_branch_name in http_route path. Adding the required path."
