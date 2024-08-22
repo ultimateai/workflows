@@ -29,6 +29,8 @@ jobs:
           cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
           rm -f $preview_branch_name-deployment.yaml
           rm -f $preview_branch_name-service.yaml
+          rm -f $preview_branch_name-backend_policy.yaml
+          rm -f $preview_branch_name-health_check_policy.yaml
         env:
           preview_branch_name: ${{inputs.preview_branch_name}}
           K8S_ENV_NAME: development
@@ -50,22 +52,52 @@ jobs:
           else
             echo "Entries found for $preview_branch_name-service.yaml. Executing Cleanup"
             sed -i "/$preview_branch_name-service.yaml/d" kustomization.yaml 
+          fi
+          check_backend_policy_file=$(preview_backend_policy_file=$preview_branch_name-backend_policy.yaml  yq '(.resources[] | select (test(env(preview_backend_policy_file)))' kustomization.yaml)
+          if [[ -z $check_backend_policy_file ]];then
+            echo "No entries found for $preview_branch_name-backend_policy.yaml."
+          else
+            echo "Entries found for $preview_branch_name-backend_policy.yaml. Executing Cleanup"
+            sed -i "/$preview_branch_name-backend_policy.yaml/d" kustomization.yaml 
+          fi
+          check_health_check_policy_file=$(preview_health_check_policy_file=$preview_branch_name-health_check_policy.yaml  yq '(.resources[] | select (test(env(preview_health_check_policy_file)))' kustomization.yaml)
+          if [[ -z $check_health_check_policy_file ]];then
+            echo "No entries found for $preview_branch_name-health_check_policy.yaml."
+          else
+            echo "Entries found for $preview_branch_name-health_check_policy.yaml. Executing Cleanup"
+            sed -i "/$preview_branch_name-health_check_policy.yaml/d" kustomization.yaml 
           fi 
         env:
           K8S_ENV_NAME: development
           preview_branch_name: ${{inputs.preview_branch_name}}
         shell: bash
     
-      - name: Remove the preview path from ingress file 
+      # - name: Remove the preview path from ingress file 
+      #   run: |-
+      #     cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
+      #     preview_path=$preview_branch_name
+      #     check_path=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' ingress-patch.yaml)
+      #     if [[ -z $check_path ]]; then
+      #       echo "No Entries found /$preview_branch_name in ingress path no action required"
+      #     else
+      #       echo "Entries found for /$preview_branch_name in path ingress.yaml. Doing the clean up"
+      #       preview_path=/$preview_branch_name/.* preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules.[0].http.paths -=[{"path":env(preview_path),"pathType": "Prefix","backend": {"service": {"name":env(preview_service),"port":{"number":3000}}}}]' ingress-patch.yaml
+      #     fi
+      #   env:
+      #     K8S_ENV_NAME: development
+      #     preview_branch_name: ${{inputs.preview_branch_name}}
+      #   shell: bash
+
+      - name: Remove the preview path from http_route file 
         run: |-
           cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
           preview_path=$preview_branch_name
-          check_path=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' ingress-patch.yaml)
-          if [[ -z $check_path ]]; then
-            echo "No Entries found /$preview_branch_name in ingress path no action required"
+          check_path_route=$(yq  '.. | select(has("value")) | select (.value == "*'$preview_path'")' http_route.yaml)
+          if [[ -z $check_path_route ]]; then
+            echo "No Entries found /$preview_branch_name in http_route path, no action required"
           else
-            echo "Entries found for /$preview_branch_name in path ingress.yaml. Doing the clean up"
-            preview_path=/$preview_branch_name/.* preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules.[0].http.paths -=[{"path":env(preview_path),"pathType": "Prefix","backend": {"service": {"name":env(preview_service),"port":{"number":3000}}}}]' ingress-patch.yaml
+            echo "Entries found for /$preview_branch_name in path http_route.yaml. Doing the clean up"
+            preview_path=/$preview_branch_name preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules += [{"matches": [{"path":{"type": "PathPrefix", "value": env(preview_path)}}] , "backendRefs": [{"kind": "Sevice", "name": env(preview_service), "port": 3000 }]}]' http_route.yaml
           fi
         env:
           K8S_ENV_NAME: development
@@ -87,6 +119,18 @@ jobs:
             git rm $preview_branch_name-service.yaml
           else
             echo "File $preview_branch_name-service.yaml not found. No action required."
+          fi
+          if [ -e $preview_branch_name-backend_policy.yaml ]; then
+            echo "File $preview_branch_name-backend_policy.yaml found. Executing git rm for $preview_branch_name-backend_policy.yaml."
+            git rm $preview_branch_name-backend_policy.yaml
+          else
+            echo "File $preview_branch_name-backend_policy.yaml not found. No action required."
+          fi
+          if [ -e $preview_branch_name-health_check_policy.yaml ]; then
+            echo "File $preview_branch_name-health_check_policy.yaml found. Executing git rm for $preview_branch_name-health_check_policy.yaml."
+            git rm $preview_branch_name-health_check_policy.yaml
+          else
+            echo "File $preview_branch_name-health_check_policy.yaml not found. No action required."
           fi
           git config --local user.name "ultimateai-bot"
           git commit -m "Doing the clean up for Preview Env for ${preview_branch_name}" -a || echo "Nothing to commit for ${preview_branch_name}, already cleaned!" >> $GITHUB_STEP_SUMMARY
