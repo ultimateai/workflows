@@ -97,7 +97,7 @@ jobs:
             echo "No Entries found /$preview_branch_name in http_route path, no action required"
           else
             echo "Entries found for /$preview_branch_name in path http_route.yaml. Doing the clean up"
-            preview_path=/$preview_branch_name preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules += [{"matches": [{"path":{"type": "PathPrefix", "value": env(preview_path)}}] , "backendRefs": [{"kind": "Sevice", "name": env(preview_service), "port": 3000 }]}]' http_route.yaml
+            preview_path=/$preview_branch_name preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules += [{"matches": [{"path":{"type": "PathPrefix", "value": env(preview_path)}}] , "backendRefs": [{"kind": "Service", "name": env(preview_service), "port": 3000 }]}]' http_route.yaml
           fi
         env:
           K8S_ENV_NAME: development
