@@ -200,7 +200,7 @@ jobs:
         run: |-
           cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
           preview_path=$preview_branch_name
-          check_path_route=$(yq  '.. | select(has("path")) | select (.path == "*'$preview_path'*")' http_route.yaml)
+          check_path_route=$(yq  '.. | select(has("value")) | select (.value == "*'$preview_path'")' http_route.yaml)
           if [[ -z $check_path_route ]]; then
             echo "No Entries found /$preview_branch_name in http_route path. Adding the required path."
             preview_path=/$preview_branch_name preview_service=dashboard-frontend-dev-$preview_branch_name-service yq -i '.spec.rules += [{"matches": [{"path":{"type": "PathPrefix", "value": env(preview_path)}}] , "backendRefs": [{"kind": "Sevice", "name": env(preview_service), "port": 3000 }]}]' http_route.yaml
