@@ -79,6 +79,11 @@ on:
           type: string
           description: "Region name to deploy - europe or us-central1, defaults to europe"
           default: "europe"
+        runner:
+          required: false
+          default: "preemptible-runners"
+          description: "Runner to use for the workflow"
+          type: string
 
 
 env:
@@ -109,7 +114,7 @@ jobs:
   bump-release:
     name: Bump release
     if: github.event.pull_request.merged == true
-    runs-on: preemptible-runners
+    runs-on: ${{ inputs.runner }}
     permissions:
       contents: "read"
       id-token: "write"

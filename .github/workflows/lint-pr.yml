@@ -29,6 +29,11 @@ on:
           major
           patch
         description: "Types allowed in PR title - TYPE(scope): subject"
+      runner:
+        required: false
+        default: "preemptible-runners"
+        description: "Runner to use for the workflow"
+        type: string
   
 env:
   REQUIRE_SCOPE: ${{ inputs.requireScope }}
@@ -40,7 +45,7 @@ env:
 jobs:
   main:
     name: Validate PR title
-    runs-on: preemptible-runners
+    runs-on: ${{ inputs.runner }}
     steps:
       - uses: amannn/action-semantic-pull-request@v5.0.2
         env:

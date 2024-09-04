@@ -58,6 +58,11 @@ on:
           type: string
           description: "Additional region (apart from europe) to deploy - default is us-west1"
           default: "us-west1"
+        runner:
+          required: false
+          default: "preemptible-runners"
+          description: "Runner to use for the workflow"
+          type: string
 
 
 env:
@@ -84,7 +89,7 @@ env:
 jobs:
   deploy:
     name: Update k8s manifest repo for ${{ inputs.ENVIRONMENT }} deployment
-    runs-on: preemptible-runners
+    runs-on: ${{ inputs.runner }}
     outputs:
       environment: ${{ env.ENVIRONMENT }}
       run_e2e_tests: ${{ env.RUN_E2E_TESTS }}

@@ -65,6 +65,11 @@ on:
           type: string
           description: "Region name to deploy - europe or us-central1, defaults to europe"
           default: "europe"
+        runner:
+          required: false
+          default: "preemptible-runners"
+          description: "Runner to use for the workflow"
+          type: string
 
 
 env:
@@ -91,7 +96,7 @@ env:
 jobs:
   deploy:
     name: Update k8s manifest repo for staging deployment
-    runs-on: preemptible-runners
+    runs-on: ${{ inputs.runner }}
     permissions:
       contents: "read"
       id-token: "write"
