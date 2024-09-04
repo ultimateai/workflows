@@ -45,12 +45,11 @@ env:
   NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
   NODE_VERSION: ${{ inputs.node_version }}
   NPM_VERSION: ${{ inputs.npm_version }}
-  RUNNER: ${{ inputs.runner }}
 
 
 jobs:
   test_build:
-    runs-on: ${{ env.RUNNER }}
+    runs-on: ${{ inputs.runner }}
     name: Test code and build image
     permissions:
       contents: "read"
