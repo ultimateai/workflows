@@ -30,10 +30,10 @@ on:
           patch
         description: "Types allowed in PR title - TYPE(scope): subject"
       runner:
-          required: true
-          default: "preemptible-runners"
-          description: "Runner to use for the workflow"
-          type: string
+        required: false
+        default: "preemptible-runners"
+        description: "Runner to use for the workflow"
+        type: string
   
 env:
   REQUIRE_SCOPE: ${{ inputs.requireScope }}

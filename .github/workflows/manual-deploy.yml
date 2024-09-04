@@ -59,7 +59,7 @@ on:
           description: "Additional region (apart from europe) to deploy - default is us-west1"
           default: "us-west1"
         runner:
-          required: true
+          required: false
           default: "preemptible-runners"
           description: "Runner to use for the workflow"
           type: string
@@ -84,13 +84,12 @@ env:
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
   REGION: ${{ inputs.region }}
   AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
-  RUNNER: ${{ inputs.runner }}
 
 
 jobs:
   deploy:
     name: Update k8s manifest repo for ${{ inputs.ENVIRONMENT }} deployment
-    runs-on: ${{ env.RUNNER }}
+    runs-on: ${{ inputs.runner }}
     outputs:
       environment: ${{ env.ENVIRONMENT }}
       run_e2e_tests: ${{ env.RUN_E2E_TESTS }}

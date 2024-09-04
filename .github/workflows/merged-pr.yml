@@ -80,7 +80,7 @@ on:
           description: "Region name to deploy - europe or us-central1, defaults to europe"
           default: "europe"
         runner:
-          required: true
+          required: false
           default: "preemptible-runners"
           description: "Runner to use for the workflow"
           type: string
@@ -109,13 +109,12 @@ env:
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
   AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
   REGION: ${{ inputs.region }}
-  RUNNER: ${{ inputs.runner }}
 
 jobs:
   bump-release:
     name: Bump release
     if: github.event.pull_request.merged == true
-    runs-on: ${{ env.RUNNER }}
+    runs-on: ${{ inputs.runner }}
     permissions:
       contents: "read"
       id-token: "write"
