@@ -32,6 +32,11 @@ on:
         required: false
         type: string
         description: "Npm version used in the pipeline, defaults to LTS version"
+      runner:
+          required: true
+          default: "preemptible-runners"
+          description: "Runner to use for the workflow"
+          type: string
 
 env:
   TEST_COMMAND: ${{ inputs.test_command }}
@@ -40,11 +45,12 @@ env:
   NPM_INSTALL_COMMAND: ${{ inputs.npm_install_command }}
   NODE_VERSION: ${{ inputs.node_version }}
   NPM_VERSION: ${{ inputs.npm_version }}
+  RUNNER: ${{ inputs.runner }}
 
 
 jobs:
   test_build:
-    runs-on: preemptible-runners
+    runs-on: ${{ env.RUNNER }}
     name: Test code and build image
     permissions:
       contents: "read"

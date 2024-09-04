@@ -65,6 +65,11 @@ on:
           type: string
           description: "Region name to deploy - europe or us-central1, defaults to europe"
           default: "europe"
+        runner:
+          required: true
+          default: "preemptible-runners"
+          description: "Runner to use for the workflow"
+          type: string
 
 
 env:
@@ -87,11 +92,12 @@ env:
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
   REGION: ${{ inputs.region }}
   AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
+  RUNNER: ${{ inputs.runner }}
 
 jobs:
   deploy:
     name: Update k8s manifest repo for staging deployment
-    runs-on: preemptible-runners
+    runs-on: ${{ env.RUNNER }}
     permissions:
       contents: "read"
       id-token: "write"
