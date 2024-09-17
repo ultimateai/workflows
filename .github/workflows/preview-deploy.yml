@@ -61,13 +61,6 @@ jobs:
         env:
           preview_branch_name: ${{ inputs.preview_branch_name }}
         shell: bash
-
-      - name: Update the current configmap in deployment file
-        run: |-
-          sed -i "s/configmap-name/$current_configmap_name/g" "preview_deploy/deployment.yaml"
-        env:
-          current_configmap_name: ${{ steps.get_configmap.outputs.configmap_name }}
-        shell: bash
         
       - name: Update the image tag in deployment file
         run: |-
