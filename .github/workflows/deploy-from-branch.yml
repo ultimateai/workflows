@@ -301,9 +301,7 @@ jobs:
               cd $APP_SQUAD/$app_name/overlay/${K8S_ENV_NAME}
               cat $HOME/$app_name-dev-copy.env > dev.env
               kustomize edit set image app=${IMAGE_NAME}:${TAG}
-              echo "TAG is: $TAG"
-              echo "Tag with brackets is ${TAG}"
-              yq eval "(.labels[] | select(.pairs.'app.kubernetes.io/name' != null).pairs.'tags.datadoghq.com/version') = \"${TAG}\"" -i kustomization.yaml
+              export TAG=${TAG}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != "null").pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
               cat kustomization.yaml
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
@@ -315,9 +313,7 @@ jobs:
             cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
             cat $HOME/dev-copy.env > dev.env
             kustomize edit set image app=${IMAGE_NAME}:${TAG}
-            echo "TAG is: $TAG"
-            echo "Tag with brackets is ${TAG}"
-            yq eval "(.labels[] | select(.pairs.'app.kubernetes.io/name' != null).pairs.'tags.datadoghq.com/version') = \"${TAG}\"" -i kustomization.yaml
+            export TAG=${TAG}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != "null").pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
             cat kustomization.yaml
             git config --local user.email $GITHUB_EMAIL
             git config --local user.name $GITHUB_USER
