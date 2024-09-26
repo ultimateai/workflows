@@ -359,6 +359,7 @@ jobs:
                   echo "Deploying ${{ github.event.repository.name }} at $env "
                   cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$env
                   FILE_ENV=$(ls | grep ".env");cat $HOME/$env-envfile.env > $FILE_ENV
+                  export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
                   kustomize edit set image app=${IMAGE_NAME}:${TAGS}
                   scheduler=$(cat $HOME/$env-scheduler)
                   yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
@@ -377,6 +378,7 @@ jobs:
             if [[ "${K8S_ENV_NAME}" == "development" || "${K8S_ENV_NAME}" == "staging"  ]]; then
               cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/${K8S_ENV_NAME}
               FILE_ENV=$(ls | grep ".env");cat $HOME/${K8S_ENV_NAME}-envfile.env > $FILE_ENV
+              export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
               cat kustomization.yaml
               scheduler=$(cat $HOME/${K8S_ENV_NAME}-scheduler)

@@ -300,8 +300,8 @@ jobs:
             do
               cd $APP_SQUAD/$app_name/overlay/${K8S_ENV_NAME}
               cat $HOME/$app_name-dev-copy.env > dev.env
+              export TAG=${TAG}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
               kustomize edit set image app=${IMAGE_NAME}:${TAG}
-              cat kustomization.yaml
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
               git commit -m "update $app_name image to ${IMAGE_NAME}:${TAG}" -a
@@ -311,8 +311,8 @@ jobs:
           else
             cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
             cat $HOME/dev-copy.env > dev.env
+            export TAG=${TAG}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
             kustomize edit set image app=${IMAGE_NAME}:${TAG}
-            cat kustomization.yaml
             git config --local user.email $GITHUB_EMAIL
             git config --local user.name $GITHUB_USER
             git commit -m "update image to ${IMAGE_NAME}:${TAG}" -a

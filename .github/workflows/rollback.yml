@@ -214,6 +214,7 @@ jobs:
             do
               cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
               FILE_ENV=$(ls | grep ".env");cat $HOME/eu-$app_name-envfile.env > $FILE_ENV
+              export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
@@ -228,6 +229,7 @@ jobs:
               cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
             fi
             FILE_ENV=$(ls | grep ".env");cat $HOME/eu-envfile.env > $FILE_ENV
+            export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
             git config --local user.email $GITHUB_EMAIL
             git config --local user.name $GITHUB_USER
@@ -251,6 +253,7 @@ jobs:
               echo "Deploying in Europe region for $app_name"
               cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
               FILE_ENV=$(ls | grep ".env");cat $HOME/eu-$app_name-envfile.env > $FILE_ENV
+              export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
@@ -261,6 +264,7 @@ jobs:
               echo "Deploying in $REGION region for $app_name"
               cd $APP_SQUAD/$app_name/region/$REGION/overlay/$ENVIRONMENT
               FILE_ENV=$(ls | grep ".env");cat $HOME/$REGION-$app_name-envfile.env > $FILE_ENV
+              export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
               kustomize edit set image app=${IMAGE_NAME}:${TAGS}
               git config --local user.email $GITHUB_EMAIL
               git config --local user.name $GITHUB_USER
@@ -276,6 +280,7 @@ jobs:
               cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
             fi
             FILE_ENV=$(ls | grep ".env");cat $HOME/eu-envfile.env > $FILE_ENV
+            export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
             git config --local user.email $GITHUB_EMAIL
             git config --local user.name $GITHUB_USER
@@ -288,6 +293,7 @@ jobs:
               cd $APP_SQUAD/${APP_NAMES}/region/$REGION/overlay/$ENVIRONMENT
             fi
             FILE_ENV=$(ls | grep ".env");cat $HOME/$REGION-envfile.env > $FILE_ENV
+            export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
             kustomize edit set image app=${IMAGE_NAME}:${TAGS}
             git config --local user.email $GITHUB_EMAIL
             git config --local user.name $GITHUB_USER
