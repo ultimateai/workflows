@@ -392,6 +392,7 @@ jobs:
                     echo "Deploying $app_name at $env"
                     cd $APP_SQUAD/$app_name/overlay/$env
                     FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-$env-envfile.env > $FILE_ENV
+                    export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
                     kustomize edit set image app=${IMAGE_NAME}:${TAGS}
                     cat kustomization.yaml
                     git config --local user.email $GITHUB_EMAIL
@@ -404,6 +405,7 @@ jobs:
                   echo "Deploying $APP_NAMES at $env "
                   cd $APP_SQUAD/${APP_NAMES}/overlay/$env
                   FILE_ENV=$(ls | grep ".env");cat $HOME/$env-envfile.env > $FILE_ENV
+                  export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
                   kustomize edit set image app=${IMAGE_NAME}:${TAGS}
                   cat kustomization.yaml
                   git config --local user.email $GITHUB_EMAIL
@@ -425,6 +427,7 @@ jobs:
                 do
                   cd $APP_SQUAD/$app_name/overlay/${K8S_ENV_NAME}
                   FILE_ENV=$(ls | grep ".env");cat $HOME/$app_name-${K8S_ENV_NAME}-envfile.env > $FILE_ENV
+                  export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
                   kustomize edit set image app=${IMAGE_NAME}:${TAGS}
                   cat kustomization.yaml
                   git config --local user.email $GITHUB_EMAIL
@@ -436,6 +439,7 @@ jobs:
               else
                 cd $APP_SQUAD/${APP_NAMES}/overlay/${K8S_ENV_NAME}
                 FILE_ENV=$(ls | grep ".env");cat $HOME/${K8S_ENV_NAME}-envfile.env > $FILE_ENV
+                export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
                 kustomize edit set image app=${IMAGE_NAME}:${TAGS}
                 cat kustomization.yaml
                 git config --local user.email $GITHUB_EMAIL

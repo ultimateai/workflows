@@ -193,6 +193,7 @@ jobs:
         run: |-
           cd $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT
           FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+          export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
           kustomize edit set image app=${IMAGE_NAME}:${TAGS}
           scheduler=$(cat $HOME/scheduler)
           yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
@@ -211,6 +212,7 @@ jobs:
         run: |-
           cd $APP_SQUAD/${{ github.event.repository.name }}/region/${REGION}/$ENVIRONMENT
           FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
+          export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
           kustomize edit set image app=${IMAGE_NAME}:${TAGS}
           scheduler=$(cat $HOME/scheduler)
           yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml

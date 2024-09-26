@@ -212,6 +212,7 @@ jobs:
           ls $HOME
           scheduler=$(cat $HOME/scheduler)
           yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
+          export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
           kustomize edit set image app=${IMAGE_NAME}:${TAGS}
           cat kustomization.yaml
           git config --local user.email $GITHUB_EMAIL
@@ -230,6 +231,7 @@ jobs:
           FILE_ENV=$(ls | grep ".env");cat $HOME/envfile.env > $FILE_ENV
           scheduler=$(cat $HOME/scheduler)
           yq ".spec.schedule = \"$scheduler\"" -i cronjob.yaml
+          export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
           kustomize edit set image app=${IMAGE_NAME}:${TAGS}
           cat kustomization.yaml
           git config --local user.email $GITHUB_EMAIL
