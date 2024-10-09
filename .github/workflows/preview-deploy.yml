@@ -33,6 +33,7 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@v3
       - id: "auth"
         name: "Authenticate to Google Cloud"
         uses: "google-github-actions/auth@v1"
@@ -54,6 +55,8 @@ jobs:
 
       - name: Update the apps in deployment, service, backend_policy & health_check_policy files with branch names
         run: |-
+          ls -la
+          ls preview_deploy
           sed -i "s/branch-name/$preview_branch_name/g" "preview_deploy/deployment.yaml"
           sed -i "s/branch-name/$preview_branch_name/g" "preview_deploy/service.yaml"
           sed -i "s/branch-name/$preview_branch_name/g" "preview_deploy/backend_policy.yaml"
