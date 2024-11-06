@@ -329,7 +329,7 @@ jobs:
               ]
             }
         env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
@@ -356,7 +356,7 @@ jobs:
               ]
             }
         env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_BOT_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
