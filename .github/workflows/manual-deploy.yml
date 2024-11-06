@@ -516,7 +516,7 @@ jobs:
               ]
             }
         env:
-          SLACK_BOT_TOKEN: ${{ secretsSLACK_GITHUB_ZENDESK_APP_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
           BUCKET_LINK: ${{ needs.run-e2e-test.outputs.bucket_link }}
 
       - name: Slack Notification for e2e success
@@ -540,5 +540,5 @@ jobs:
               ]
             }
         env:
-          SLACK_BOT_TOKEN: ${{ secretsSLACK_GITHUB_ZENDESK_APP_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
           BUCKET_LINK: ${{ needs.run-e2e-test.outputs.bucket_link }}
