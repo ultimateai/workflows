@@ -39,28 +39,28 @@ jobs:
       - name: Remove the entry from kustomize file for the preview environment 
         run: |-
           cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
-          check_deployment_file=$(preview_deployment_file=$preview_branch_name-deployment.yaml  yq '(.resources[] | select (test(env(preview_deployment_file)))' kustomization.yaml)
+          check_deployment_file=$(preview_deployment_file=$preview_branch_name-deployment.yaml  yq '(.resources[] | select (test(env(preview_deployment_file))))' kustomization.yaml)
           if [[ -z $check_deployment_file ]];then
             echo "No entries found for $preview_branch_name-deployment.yaml."
           else
             echo "Entries found for $preview_branch_name-deployment.yaml. Executing Cleanup"
             sed -i "/$preview_branch_name-deployment.yaml/d" kustomization.yaml 
           fi                   
-          check_service_file=$(preview_service_file=$preview_branch_name-service.yaml yq '(.resources[] | select (test(env(preview_service_file)))' kustomization.yaml)
+          check_service_file=$(preview_service_file=$preview_branch_name-service.yaml yq '(.resources[] | select (test(env(preview_service_file))))' kustomization.yaml)
           if [[ -z $check_service_file ]];then
             echo "No entries found for $preview_branch_name-service.yaml"
           else
             echo "Entries found for $preview_branch_name-service.yaml. Executing Cleanup"
             sed -i "/$preview_branch_name-service.yaml/d" kustomization.yaml 
           fi
-          check_backend_policy_file=$(preview_backend_policy_file=$preview_branch_name-backend_policy.yaml  yq '(.resources[] | select (test(env(preview_backend_policy_file)))' kustomization.yaml)
+          check_backend_policy_file=$(preview_backend_policy_file=$preview_branch_name-backend_policy.yaml  yq '(.resources[] | select (test(env(preview_backend_policy_file))))' kustomization.yaml)
           if [[ -z $check_backend_policy_file ]];then
             echo "No entries found for $preview_branch_name-backend_policy.yaml."
           else
             echo "Entries found for $preview_branch_name-backend_policy.yaml. Executing Cleanup"
             sed -i "/$preview_branch_name-backend_policy.yaml/d" kustomization.yaml 
           fi
-          check_health_check_policy_file=$(preview_health_check_policy_file=$preview_branch_name-health_check_policy.yaml  yq '(.resources[] | select (test(env(preview_health_check_policy_file)))' kustomization.yaml)
+          check_health_check_policy_file=$(preview_health_check_policy_file=$preview_branch_name-health_check_policy.yaml  yq '(.resources[] | select (test(env(preview_health_check_policy_file))))' kustomization.yaml)
           if [[ -z $check_health_check_policy_file ]];then
             echo "No entries found for $preview_branch_name-health_check_policy.yaml."
           else
