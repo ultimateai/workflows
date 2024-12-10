@@ -135,28 +135,28 @@ jobs:
       - name: Update the kustomize file of the preview environment 
         run: |-
           cd frontend/dashboard-frontend/overlay/${K8S_ENV_NAME}
-          check_deployment_file=$(preview_deployment_file=$preview_branch_name-deployment.yaml  yq '(.resources[] | select (test(env(preview_deployment_file)))' kustomization.yaml)
+          check_deployment_file=$(preview_deployment_file=$preview_branch_name-deployment.yaml  yq '(.resources[] | select (test(env(preview_deployment_file))))' kustomization.yaml)
           if [[ -z $check_deployment_file ]];then
               echo "Entries Not found for $preview_branch_name-deployment.yaml. Adding Entry for $preview_branch_name-deployment.yaml."
               preview_deployment_file=$preview_branch_name-deployment.yaml yq -i '.resources += env(preview_deployment_file)' kustomization.yaml
           else
               echo "Entries found for $preview_branch_name-deployment.yaml. No action required."
           fi
-          check_service_file=$(preview_service_file=$preview_branch_name-service.yaml yq '(.resources[] | select (test(env(preview_service_file)))' kustomization.yaml)
+          check_service_file=$(preview_service_file=$preview_branch_name-service.yaml yq '(.resources[] | select (test(env(preview_service_file))))' kustomization.yaml)
           if [[ -z $check_service_file ]];then
               echo "Entries Not found for $preview_branch_name-service.yaml. Adding Entry for $preview_branch_name-service.yaml."
               preview_service_file=$preview_branch_name-service.yaml yq -i '.resources += env(preview_service_file)' kustomization.yaml
           else
               echo "Entries found for $preview_branch_name-service.yaml. No action required."
           fi
-          check_backend_policy_file=$(preview_backend_policy_file=$preview_branch_name-backend_policy.yaml yq '(.resources[] | select (test(env(preview_backend_policy_file)))' kustomization.yaml)
+          check_backend_policy_file=$(preview_backend_policy_file=$preview_branch_name-backend_policy.yaml yq '(.resources[] | select (test(env(preview_backend_policy_file))))' kustomization.yaml)
           if [[ -z $check_backend_policy_file ]];then
               echo "Entries Not found for $preview_branch_name-backend_policy.yaml. Adding Entry for $preview_branch_name-backend_policy.yaml."
               preview_backend_policy_file=$preview_branch_name-backend_policy.yaml yq -i '.resources += env(preview_backend_policy_file)' kustomization.yaml
           else
               echo "Entries found for $preview_branch_name-backend_policy.yaml. No action required."
           fi
-          check_health_check_policy_file=$(preview_health_check_policy_file=$preview_branch_name-health_check_policy.yaml yq '(.resources[] | select (test(env(preview_health_check_policy_file)))' kustomization.yaml)
+          check_health_check_policy_file=$(preview_health_check_policy_file=$preview_branch_name-health_check_policy.yaml yq '(.resources[] | select (test(env(preview_health_check_policy_file))))' kustomization.yaml)
           if [[ -z $check_health_check_policy_file ]];then
               echo "Entries Not found for $preview_branch_name-health_check_policy.yaml. Adding Entry for $preview_branch_name-health_check_policy.yaml."
               preview_health_check_policy_file=$preview_branch_name-health_check_policy.yaml yq -i '.resources += env(preview_health_check_policy_file)' kustomization.yaml
