@@ -241,7 +241,7 @@ jobs:
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
-          SINGLE_APP_NAME: ${{ steps.d.outputs.single_app_name }}
+          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
 
       - name: Update the Image tags and env files for PROD
         if: ${{ env.ENVIRONMENT == 'production' }}
