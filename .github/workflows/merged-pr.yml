@@ -84,7 +84,7 @@ on:
           default: "preemptible-runners"
           description: "Runner to use for the workflow"
           type: string
-        cerebro-team:
+        cerebro_team:
           required: false
           type: string
           description: "Cerebro team name - must exist in https://cerebro.zende.sk/teams/ai-agents"
@@ -114,7 +114,7 @@ env:
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
   AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
   REGION: ${{ inputs.region }}
-  CEREBRO_TEAM: ${{ inputs.cerebro-team }}
+  CEREBRO_TEAM: ${{ inputs.cerebro_team }}
 
 jobs:
   bump-release:
