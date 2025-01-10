@@ -3,6 +3,87 @@ name: Merged PR to main branch
 on:
   workflow_call:
     inputs:
+      image_repo:
+        required: true
+        type: string
+        description: "Your container registry repository - like europe-docker.pkg.dev/$project_id/$repo_id"
+      app_squad:
+        required: true
+        type: string
+        description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
+      github_email:
+        required: true
+        type: string
+        description: "Automatic CI/CD commits will be done by this email"
+      github_user:
+        required: true
+        type: string
+        description: "Automatic CI/CD commits will be done by this user"
+      k8s_manifests_repo:
+        required: true
+        type: string
+        description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+      update_file:
+        required: false
+        type: string
+        description: "The file with the version you want to update"
+      changelog:
+        required: false
+        type: boolean
+        description: "Update changelog"
+      initial_release:
+        required: false
+        type: string
+        description: "In case no release is present in the repo, which one should be the base release from which to bump - defaults to 0.0.0"
+        default: "0.0.1"
+      automatic_deployment_to:
+        required: false
+        type: string
+        description: "To which env you want to automatically deploy - defaults to staging"
+        default: "staging"
+      npm_install_command:
+        required: false
+        type: string
+        description: "Command for npm i, defaults to - npm i"
+        default: "npm i"
+      app_names:
+        required: false
+        type: string
+        description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
+      node_version:
+        required: false
+        type: string
+        default: "16.x"
+        description: "Node version used in the pipeline, defaults to 16.x"
+      test_command:
+        required: false
+        type: string
+        description: "Command for running your tests, defaults to - npm run test"
+        default: "npm run test"
+      build_command:
+        required: false
+        type: string
+        description: "Command for running npm run build, defaults to - npm run build"
+        default: "npm run build"
+      lint_command:
+        required: false
+        type: string
+        description: "Command for running npm run lint, defaults to - npm run lint"
+        default: "npm run lint"
+      npm_version:
+        required: false
+        type: string
+        description: "Npm version used in the pipeline, defaults to LTS version"
+      region:
+        required: false
+        type: string
+        description: "Region name to deploy - europe or us-central1, defaults to europe"
+        default: "europe"
+      runner:
+        required: false
+        default: "preemptible-runners"
+        description: "Runner to use for the workflow"
+        type: string
         image_repo:
           required: true
           type: string
@@ -90,7 +171,6 @@ on:
           description: "Cerebro team name - must exist in https://cerebro.zende.sk/teams/ai-agents"
           default: "ai-agents"
 
-
 env:
   IMAGE_REPO: ${{ inputs.image_repo }}
   APP_SQUAD: ${{ inputs.app_squad }}
@@ -149,7 +229,7 @@ jobs:
         if: ${{ env.NPM_VERSION }}
         run: npm i -g npm@${{ env.NPM_VERSION }} --registry=https://registry.npmjs.org
 
-       ### Authentings with Google Cloud because of artifact registry ###
+        ### Authentings with Google Cloud because of artifact registry ###
       - id: "auth"
         name: "Authenticate to Google Cloud"
         uses: "google-github-actions/auth@v2"
@@ -174,7 +254,6 @@ jobs:
         env:
           BUMPED_VERSION: ${{ steps.bump_version.outputs.next_version }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
-
 
   push-and-deploy:
     name: Push image with updated tag and deploy to pre environments
@@ -465,3 +544,20 @@ jobs:
           K8S_ENV_NAME: ${{ env.AUTOMATIC_DEPLOYMENT_TO }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
+
+      - name: check sonar properties file exists
+        id: check-properties-file
+        uses: andstor/file-existence-action@v3
+        with:
+          files: "sonar-project.properties"
+
+      - name: SonarQube Scan
+        if: github.ref == 'refs/heads/main' && steps.check-properties-file.outputs.exists == 'true'
+        uses: SonarSource/sonarqube-scan-action@v4.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
+        with:
+          args: >
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.branch.name=main

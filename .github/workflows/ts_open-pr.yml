@@ -46,7 +46,6 @@ env:
   NODE_VERSION: ${{ inputs.node_version }}
   NPM_VERSION: ${{ inputs.npm_version }}
 
-
 jobs:
   test_build:
     runs-on: ${{ inputs.runner }}
@@ -115,3 +114,25 @@ jobs:
         run: |-
           docker build .
         shell: bash
+
+      - name: check sonar properties file exists
+        id: check-properties-file
+        uses: andstor/file-existence-action@v3
+        with:
+          files: "sonar-project.properties"
+
+      - name: Sonarqube Scan PR
+        if: steps.check-properties-file.outputs.files_exists == 'true'
+        uses: SonarSource/sonarqube-scan-action@v4.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONARQUBE_URL }}
+        with:
+          args: >
+            -Dsonar.pullrequest.key=${{ github.event.number }}
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.base=${{ github.base_ref }}
+            -Dsonar.pullrequest.github.repository=${{ github.repository }}
+            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.projectVersion=${{ github.sha }}
