@@ -545,14 +545,8 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
-      - name: check sonar properties file exists
-        id: check-properties-file
-        uses: andstor/file-existence-action@v3
-        with:
-          files: "sonar-project.properties"
-
       - name: SonarQube Scan
-        if: github.ref == 'refs/heads/main' && steps.check-properties-file.outputs.exists == 'true'
+        if: github.ref == 'refs/heads/main'
         uses: SonarSource/sonarqube-scan-action@v4.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
