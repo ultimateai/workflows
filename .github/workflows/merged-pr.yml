@@ -545,7 +545,7 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
-      - name: SonarQube Scan
+      - name: SonarQube Scan Main
         if: github.ref == 'refs/heads/main'
         uses: SonarSource/sonarqube-scan-action@v4.1.0
         env:
