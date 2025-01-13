@@ -153,18 +153,5 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
         with:
           args: >
+            -X
             -Dsonar.qualitygate.wait=true
-
-      # Fail the build if the quality gate fails
-      - name: Fail the build if the quality gate fails
-        if: steps.pr-sonarqube-scan.outputs.status == 'SUCCESS'
-        run: |
-          STATUS=$(curl -s -u ${{ secrets.SONARQUBE_TOKEN }}: "${{ secrets.SONARQUBE_HOST }}/api/qualitygates/project_status?analysisId=$(curl -s -u ${{ secrets.SONARQUBE_TOKEN }}: "$SONAR_HOST_URL/api/ce/component?componentKey=${{ github.repository }}&branch=${{ github.head_ref }}" | jq -r '.analyses[0].key')" | jq -r '.projectStatus.status')
-          echo "Quality gate status: $STATUS"
-          if [ "$STATUS" != "OK" ]; then
-            echo "Quality gate failed. Please check the SonarQube dashboard for more details."
-            exit 1
-          fi
-        env:
-          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
