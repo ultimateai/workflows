@@ -121,7 +121,15 @@ jobs:
         with:
           files: "sonar-project.properties"
 
+      #  If sonar properties does not exist, fail build and display proper message
+      - name: Fail the build if sonar properties file does not exist
+        if: steps.check-properties-file.outputs.files_exists == 'false'
+        run: |
+          echo "Sonar properties file does not exist. Please create a sonar-project.properties file in the root of your project."
+          exit 1
+
       - name: Sonarqube Scan PR
+        id: pr-sonarqube-scan
         if: steps.check-properties-file.outputs.files_exists == 'true'
         uses: SonarSource/sonarqube-scan-action@v4.1.0
         env:
@@ -136,3 +144,27 @@ jobs:
             -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.projectVersion=${{ github.sha }}
+
+      - name: Check quality gate status
+        if: steps.check-properties-file.outputs.files_exists == 'true'
+        uses: SonarSource/sonarqube-scan-action@v4.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
+
+      # Fail the build if the quality gate fails
+      - name: Fail the build if the quality gate fails
+        if: steps.pr-sonarqube-scan.outputs.status == 'SUCCESS'
+        run: |
+          STATUS=$(curl -s -u ${{ secrets.SONARQUBE_TOKEN }}: "${{ secrets.SONARQUBE_HOST }}/api/qualitygates/project_status?analysisId=$(curl -s -u ${{ secrets.SONARQUBE_TOKEN }}: "$SONAR_HOST_URL/api/ce/component?componentKey=${{ github.repository }}&branch=${{ github.head_ref }}" | jq -r '.analyses[0].key')" | jq -r '.projectStatus.status')
+          echo "Quality gate status: $STATUS"
+          if [ "$STATUS" != "OK" ]; then
+            echo "Quality gate failed. Please check the SonarQube dashboard for more details."
+            exit 1
+          fi
+        env:
+          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
