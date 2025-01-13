@@ -70,6 +70,11 @@ on:
           default: "preemptible-runners"
           description: "Runner to use for the workflow"
           type: string
+        cerebro_team:
+          required: false
+          type: string
+          description: "Cerebro team name - must exist in https://cerebro.zende.sk/teams/ai-agents"
+          default: "ai-agents"
 
 
 env:
@@ -92,6 +97,7 @@ env:
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
   REGION: ${{ inputs.region }}
   AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
+  CEREBRO_TEAM: ${{ inputs.cerebro_team }}
 
 jobs:
   deploy:
@@ -259,13 +265,14 @@ jobs:
       - name: Docker build
         run: |-
           echo "$SSH_KEY" > id_rsa
-          docker build -t "${GCR_IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:${TAGS}" .
+          docker build --label "team=${CEREBRO_TEAM}" -t "${GCR_IMAGE_NAME}:${TAGS}" -t "${GAR_IMAGE_NAME}:${TAGS}" .
         shell: bash
         env:
           SSH_KEY: ${{ secrets.BB_SSH_KEY }}
           TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
           GCR_IMAGE_NAME: ${{ steps.image_name.outputs.gcr_image_name }}
           GAR_IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
+          CEREBRO_TEAM: ${{ env.CEREBRO_TEAM }}
 
       - name: Docker push to GCR
         if: ${{ env.GCR_ENABLED == 'true' }}
