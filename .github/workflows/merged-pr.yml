@@ -464,6 +464,19 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
+      - name: check sonar properties file exists in main branch
+        id: check-properties-file
+        uses: andstor/file-existence-action@v3
+        with:
+          files: "sonar-project.properties"
+
+      #  If sonar properties does not exist, fail step
+      - name: Fail the step if sonar properties file does not exist
+        if: steps.check-properties-file.outputs.files_exists == 'false'
+        run: |
+          echo "Sonar properties file does not exist. Please create a sonar-project.properties file in the root of your project." >> $GITHUB_STEP_SUMMARY
+          exit 1
+
       - name: SonarQube Scan Main
         if: github.ref == 'refs/heads/main'
         uses: SonarSource/sonarqube-scan-action@v4.1.0
