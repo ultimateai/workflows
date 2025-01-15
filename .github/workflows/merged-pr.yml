@@ -464,13 +464,25 @@ jobs:
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
 
+  sonarqube-scan:
+    name: SonarQube Scan Main
+    if: github.event.pull_request.merged == true
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
       - name: check sonar properties file exists in main branch
         id: check-properties-file
         uses: andstor/file-existence-action@v3
         with:
           files: "sonar-project.properties"
 
-      #  If sonar properties does not exist, fail step
+      # If sonar properties does not exist, fail step
       - name: Fail the step if sonar properties file does not exist
         if: steps.check-properties-file.outputs.files_exists == 'false'
         run: |
