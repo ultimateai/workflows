@@ -214,6 +214,7 @@ jobs:
           args: >
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.branch.name=main
+            -Dsonar.projectTags=ai-agents,demo
 
   push-and-deploy:
     name: Push image with updated tag and deploy to pre environments
