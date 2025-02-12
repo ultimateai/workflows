@@ -212,6 +212,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
         with:
           args: >
+            -X
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.branch.name=main
             -Dsonar.projectTags=ai-agents
