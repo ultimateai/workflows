@@ -46,7 +46,6 @@ env:
   NODE_VERSION: ${{ inputs.node_version }}
   NPM_VERSION: ${{ inputs.npm_version }}
 
-
 jobs:
   test_build:
     runs-on: ${{ inputs.runner }}
@@ -115,3 +114,32 @@ jobs:
         run: |-
           docker build .
         shell: bash
+
+      - name: check sonar properties file exists
+        id: check-properties-file
+        uses: andstor/file-existence-action@v3
+        with:
+          files: "sonar-project.properties"
+
+      #  If sonar properties does not exist, fail step
+      - name: Fail the step if sonar properties file does not exist
+        if: steps.check-properties-file.outputs.files_exists == 'false'
+        run: |
+          echo "Sonar properties file does not exist. Please create a sonar-project.properties file in the root of your project." >> $GITHUB_STEP_SUMMARY
+          exit 1
+
+      - name: Sonarqube Scan PR
+        id: pr-sonarqube-scan
+        if: steps.check-properties-file.outputs.files_exists == 'true'
+        uses: SonarSource/sonarqube-scan-action@v4.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
+        with:
+          args: >
+            -Dsonar.pullrequest.key=${{ github.event.number }}
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.base=${{ github.base_ref }}
+            -Dsonar.pullrequest.github.repository=${{ github.repository }}
+            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+            -Dsonar.projectVersion=${{ github.sha }}
