@@ -1,0 +1,590 @@
+name: CRM Manual deploy to Production with CRM Tests
+
+on:
+  workflow_call:
+    inputs:
+      image_repo:
+        required: true
+        type: string
+        description: "Your container registry repository - like europe-docker.pkg.dev/$project_id/$repo_id"
+      app_squad:
+        required: true
+        type: string
+        description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
+      environment:
+        default: "Production"
+        required: true
+        type: string
+        description: "Deploying to Production"
+      github_email:
+        required: true
+        type: string
+        description: "Automatic CI/CD commits will be done by this email"
+      github_user:
+        required: true
+        type: string
+        description: "Automatic CI/CD commits will be done by this user"
+      k8s_manifests_repo:
+        required: true
+        type: string
+        description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+      run_crm_tests:
+        required: false
+        type: string
+        description: "Execute CRM E2E test (on Staging Environment) before deployment or not?"
+        default: "true"
+      app_names:
+        required: false
+        type: string
+        description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
+      slack_channel_id:
+        required: false
+        type: string
+        default: "C07UT1DNB7W"
+        description: "Slack channel ID where you want your notifications"
+      e2e_repo:
+        required: true
+        type: string
+        description: "Repository containing your e2e tests"
+      e2e_projects:
+        default: "crm-integration"
+        required: true
+        type: string
+        description: "Projects (matrix) in crm - crm-integration"
+      e2e_bucket_name:
+        required: true
+        type: string
+        description: "Bucket in which to store e2e results"
+      region:
+        required: false
+        type: string
+        description: "Additional region (apart from europe) to deploy - default is us-west1"
+        default: "us-west1"
+      runner:
+        required: false
+        default: "preemptible-runners"
+        description: "Runner to use for the workflow"
+        type: string
+
+env:
+  IMAGE_REPO: ${{ inputs.image_repo }}
+  APP_SQUAD: ${{ inputs.app_squad }}
+  ENVIRONMENT: ${{ inputs.environment }}
+  GITHUB_EMAIL: ${{ inputs.github_email }}
+  GITHUB_USER: ${{ inputs.github_user }}
+  K8S_MANIFESTS_REPO: ${{ inputs.k8s_manifests_repo }}
+  RUN_CRM_TESTS: ${{ inputs.run_crm_tests }}
+  APP_NAMES: ${{ inputs.app_names }}
+  SLACK_CHANNEL_ID: ${{ inputs.slack_channel_id }}
+  E2E_REPO: ${{ inputs.e2e_repo }}
+  E2E_PROJECTS: ${{ inputs.e2e_projects }}
+  E2E_BUCKET_NAME: ${{ inputs.e2e_bucket_name }}
+  GCR_ENABLED: ${{ vars.GCR_ENABLED || 'true' }}
+  GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
+  GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
+  GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
+  REGION: ${{ inputs.region }}
+  AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
+
+jobs:
+  deploy:
+    name: Update k8s manifest repo for ${{ inputs.ENVIRONMENT }} deployment
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      environment: ${{ env.ENVIRONMENT }}
+      crm_tests: ${{ env.RUN_CRM_TESTS }}
+      e2e_repo: ${{ env.E2E_REPO }}
+      e2e_projects: ${{ env.E2E_PROJECTS }}
+      e2e_bucket_name: ${{ env.E2E_BUCKET_NAME }}
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if region is valid
+        run: |-
+          if [[ " ${AVAILABLE_REGIONS_FOR_DEPLOYMENT[*]} " =~ ${{ env.REGION }} ]]; then
+            echo "This region - ${{ env.REGION }} - is allowed"
+          else
+            echo "Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_REGIONS_FOR_DEPLOYMENT[*]}"
+            echo "::error::Region - ${{ env.REGION }} - is not yet supported. Supported regions are: ${AVAILABLE_REGIONS_FOR_DEPLOYMENT[*]}"
+            exit 1
+          fi
+
+      - id: "image_name"
+        name: "Extract repo name and update IMAGE_NAME"
+        run: |-
+          REPO_DOMAIN=$(echo $IMAGE_REPO | cut -d '/' -f 1)
+          case $REPO_DOMAIN in
+            *gcr.io)
+              GCR_DOMAIN=$REPO_DOMAIN
+              GAR_DOMAIN=$(echo $GAR_DEFAULT_REPO | cut -d '/' -f 1)
+              GCR_IMAGE_REPO=$IMAGE_REPO
+              GAR_IMAGE_REPO=$GAR_DEFAULT_REPO ;;
+            *pkg.dev)
+              GCR_DOMAIN=$(echo $GCR_DEFAULT_REPO | cut -d '/' -f 1)
+              GAR_DOMAIN=$REPO_DOMAIN
+              GCR_IMAGE_REPO=$GCR_DEFAULT_REPO
+              GAR_IMAGE_REPO=$IMAGE_REPO ;;
+          esac
+
+          GCR_IMAGE_NAME=$GCR_IMAGE_REPO"/"${{ github.event.repository.name }}
+          GAR_IMAGE_NAME=$GAR_IMAGE_REPO"/"${{ github.event.repository.name }}
+
+          if [ "$GAR_ENABLED" == "true" ]
+          then
+            IMAGE_NAME=$GAR_IMAGE_NAME
+          else
+            IMAGE_NAME=$GCR_IMAGE_NAME
+          fi
+
+          echo "gcr_domain=$GCR_DOMAIN" >> $GITHUB_OUTPUT
+          echo "gar_domain=$GAR_DOMAIN" >> $GITHUB_OUTPUT
+          echo "gcr_image_repo=$GCR_IMAGE_REPO" >> $GITHUB_OUTPUT
+          echo "gar_image_repo=$GAR_IMAGE_REPO" >> $GITHUB_OUTPUT
+          echo "gcr_image_name=$GCR_IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+      - id: "app_names"
+        name: "Get app_names if necessary"
+        run: |-
+          if [[ -z "${APP_NAMES}" ]]; then
+            APP_NAMES=${{ github.event.repository.name }}
+          else
+            SINGLE_APP_NAME=$(echo $APP_NAMES | sed 's/,.*//')
+            echo "single_app_name=$SINGLE_APP_NAME" >> $GITHUB_OUTPUT
+          fi
+          echo "app_names=$APP_NAMES" >> $GITHUB_OUTPUT
+
+      - name: Get env file for updating k8s-manifest repo
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+            IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+            for app_name in "${array_app_names[@]}"
+            do
+              if [[ "${ENVIRONMENT}" = "production" ]]; then
+                cat "deployment_envs/$app_name/prod.env" > $HOME/eu-$app_name-envfile.env
+                cat "deployment_envs/$app_name/region/$REGION/prod.env" > $HOME/$REGION-$app_name-envfile.env
+              elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+                cat "deployment_envs/$app_name/stage.env" > $HOME/eu-$app_name-envfile.env
+              else
+                cat "deployment_envs/$app_name/dev.env" > $HOME/eu-$app_name-envfile.env
+              fi
+              if [[ -f "deployment_envs/$app_name/common.env" || -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
+                echo "Please delete deployment_envs/$app_name/common.env or deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          else
+            if [[ "${ENVIRONMENT}" = "production" ]]; then
+              cat "deployment_envs/prod.env" > $HOME/eu-envfile.env
+              cat "deployment_envs/region/$REGION/prod.env" > $HOME/$REGION-envfile.env
+            elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+              cat "deployment_envs/stage.env" > $HOME/eu-envfile.env
+            else
+              cat "deployment_envs/dev.env" > $HOME/eu-envfile.env
+            fi
+            if [[ -f "deployment_envs/common.env" || -f "deployment_envs/region/$REGION/common.env" ]]; then
+              echo "Please delete deployment_envs/common.env or deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - id: fetch_latest_release
+        uses: ultimateai/fetch-latest-release@2.1.1
+        with:
+          github_token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+
+      - id: tag_to_deploy
+        name: Calculate version to deploy
+        run: |-
+          TAG=${{ steps.fetch_latest_release.outputs.tag_name }}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Changelog content
+        id: full_changelog_content
+        run: |
+          echo "FILE_CONTENT_CHANGELOG<<FEND" >> $GITHUB_ENV
+          head -40 CHANGELOG.md | tr -d '"' >> $GITHUB_ENV
+          echo "FEND" >> $GITHUB_ENV
+
+      - name: "Checkout k8s manifests"
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.K8S_MANIFESTS_REPO }}
+          token: ${{ secrets.ULTIMATE_GITHUB_PAT }}
+
+      - name: Check if version is already deployed in stage, if trying to deploy in prod
+        if: ${{ (env.ENVIRONMENT == 'production') }}
+        run: |-
+          if [[ "${SINGLE_APP_NAME}" ]]; then
+            STAGE_VERSION=$(cat $APP_SQUAD/$SINGLE_APP_NAME/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+            if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
+              echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
+              echo "In $SINGLE_APP_NAME, stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          else
+            STAGE_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/staging/kustomization.yaml | yq .images.0.newTag)
+            if [[ ! "${STAGE_VERSION}" = "${TAGS}" ]]; then
+              echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first"
+              echo "Stage version is $STAGE_VERSION and you want to deploy to production $TAGS. Please, deploy to staging env first" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          fi
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
+
+      - name: Check old deployed version in env to improve slack message
+        id: get_old_version
+        run: |-
+          if [[ "${SINGLE_APP_NAME}" ]]; then
+            OLD_VERSION=$(cat $APP_SQUAD/$SINGLE_APP_NAME/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
+          else
+            OLD_VERSION=$(cat $APP_SQUAD/${{ github.event.repository.name }}/overlay/$ENVIRONMENT/kustomization.yaml | yq .images.0.newTag)
+          fi
+          echo "old_version=$OLD_VERSION" >> $GITHUB_OUTPUT
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
+
+      - name: Changelog content
+        id: filter_changelog
+        run: |
+          echo "FILTERED_CHANGELOG_CONTENT<<IPO" >> $GITHUB_ENV
+          echo "${{ env.FILE_CONTENT_CHANGELOG }}" | sed '/\.\.\.${{ env.OLD_VERSION }}/q'| tac | sed '1,4 d' | tac  >> $GITHUB_ENV
+          echo "IPO" >> $GITHUB_ENV
+        env:
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+
+      - name: Changelog content for json
+        id: changelog_json_content
+        run: |
+          JSON_CONTENT=$(echo "${{ env.FILTERED_CHANGELOG_CONTENT }}" | sed 's/$/\\n/' | tr -d '\n')
+          echo "changelog_json=$JSON_CONTENT" >> $GITHUB_OUTPUT
+
+      - name: Update the Image tags and env files for PREPROD in europe region
+        if: ${{ env.ENVIRONMENT != 'production' }}
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+            IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+            for app_name in "${array_app_names[@]}"
+            do
+              cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
+              FILE_ENV=$(ls | grep ".env");cat $HOME/eu-$app_name-envfile.env > $FILE_ENV
+              export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+              git push ${REMOTE_REPO} HEAD:main --force
+              cd ../../../../
+            done
+          else
+            if [[ "${SINGLE_APP_NAME}" ]]; then
+              cd $APP_SQUAD/$SINGLE_APP_NAME/overlay/$ENVIRONMENT
+            else
+              cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
+            fi
+            FILE_ENV=$(ls | grep ".env");cat $HOME/eu-envfile.env > $FILE_ENV
+            export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
+            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+            git config --local user.email $GITHUB_EMAIL
+            git config --local user.name $GITHUB_USER
+            git commit -m "update image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+            git push ${REMOTE_REPO} HEAD:main --force
+          fi
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
+          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
+
+      - name: Update the Image tags and env files for PROD
+        if: ${{ env.ENVIRONMENT == 'production' }}
+        run: |-
+          if [[ $APP_NAMES == *","* ]]; then
+            IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+            for app_name in "${array_app_names[@]}"
+            do
+              echo "Deploying in Europe region for $app_name"
+              cd $APP_SQUAD/$app_name/overlay/$ENVIRONMENT
+              FILE_ENV=$(ls | grep ".env");cat $HOME/eu-$app_name-envfile.env > $FILE_ENV
+              export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update EU $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+              git push ${REMOTE_REPO} HEAD:main --force
+              cd ../../../../
+              echo "Deployed in Europe region for $app_name"
+              echo "Deploying in $REGION region for $app_name"
+              cd $APP_SQUAD/$app_name/region/$REGION/overlay/$ENVIRONMENT
+              FILE_ENV=$(ls | grep ".env");cat $HOME/$REGION-$app_name-envfile.env > $FILE_ENV
+              export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
+              kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+              git config --local user.email $GITHUB_EMAIL
+              git config --local user.name $GITHUB_USER
+              git commit -m "update US $app_name image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, $app_name version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+              git push ${REMOTE_REPO} HEAD:main --force
+              cd ../../../../../../
+              echo "Deployed in $REGION region for $app_name"
+            done
+          else
+            if [[ "${SINGLE_APP_NAME}" ]]; then
+              cd $APP_SQUAD/$SINGLE_APP_NAME/overlay/$ENVIRONMENT
+            else
+              cd $APP_SQUAD/${APP_NAMES}/overlay/$ENVIRONMENT
+            fi
+            FILE_ENV=$(ls | grep ".env");cat $HOME/eu-envfile.env > $FILE_ENV
+            export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
+            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+            git config --local user.email $GITHUB_EMAIL
+            git config --local user.name $GITHUB_USER
+            git commit -m "update EU image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+            git push ${REMOTE_REPO} HEAD:main --force
+            cd ../../../../
+            if [[ "${SINGLE_APP_NAME}" ]]; then
+              cd $APP_SQUAD/$SINGLE_APP_NAME/region/$REGION/overlay/$ENVIRONMENT
+            else
+              cd $APP_SQUAD/${APP_NAMES}/region/$REGION/overlay/$ENVIRONMENT
+            fi
+            FILE_ENV=$(ls | grep ".env");cat $HOME/$REGION-envfile.env > $FILE_ENV
+            export TAG=${TAGS}; yq eval '(.labels[] | select(.pairs."app.kubernetes.io/name" != null).pairs."tags.datadoghq.com/version") = env(TAG)' -i kustomization.yaml
+            kustomize edit set image app=${IMAGE_NAME}:${TAGS}
+            git config --local user.email $GITHUB_EMAIL
+            git config --local user.name $GITHUB_USER
+            git commit -m "update US image to ${IMAGE_NAME}:${TAGS}" -a || echo "Nothing to commit, version ${TAGS} is already deployed to $ENVIRONMENT in $REGION" >> $GITHUB_STEP_SUMMARY
+            git push ${REMOTE_REPO} HEAD:main --force
+            cd ../../../../../../
+          fi
+        env:
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/${{ env.K8S_MANIFESTS_REPO }}.git
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          APP_NAMES: ${{ steps.app_names.outputs.app_names }}
+          SINGLE_APP_NAME: ${{ steps.app_names.outputs.single_app_name }}
+
+      - id: "user_name"
+        name: "get full user name from github API"
+        run: |-
+          echo "https://api.github.com/users/${{ github.actor }}"
+          user_full_name=$(curl https://api.github.com/users/${{ github.actor }} | jq ".name" | tr -d '"')
+          echo $user_full_name
+          if [[ $user_full_name == "null" ]]; then
+            echo "user_full_name is null"
+            user_full_name=${{ github.actor }}
+          fi
+          echo "user_full_name=$user_full_name" >> $GITHUB_OUTPUT
+
+      - uses: slackapi/slack-github-action@v1.24.0
+        name: Slack notification
+        id: slack_notif
+        if: ${{ env.ENVIRONMENT == 'production' }}
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ env.USER_NAME }}, `${{ env.OLD_VERSION }}` -> `${{ env.TAGS }}` (`europe` and `${{ env.REGION }}`)"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          LATEST_TAG: ${{ steps.fetch_latest_release.outputs.tag_name }}
+          IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
+          OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
+          USER_NAME: ${{ steps.user_name.outputs.user_full_name }}
+
+      - uses: slackapi/slack-github-action@v1.24.0
+        name: Threaded slack notification for version comparison
+        if: ${{ env.ENVIRONMENT == 'production' }}
+        id: slack_threaded_version
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Changelog: \n ${{ env.JSON_CHANGELOG_CONTENT }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
+          TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
+          JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}
+
+  # run-e2e-test:
+  #   needs: deploy
+  #   if: ${{ needs.deploy.outputs.environment == 'staging' && needs.deploy.outputs.crm_tests == 'true' }}
+  #   name: run end to end tests
+  #   uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@0.2.0
+  #   with:
+  #     e2e_repo: ${{ needs.deploy.outputs.e2e_repo }}
+  #     projects: ${{ needs.deploy.outputs.e2e_projects }}
+  #     e2e_bucket_name: ${{ needs.deploy.outputs.E2E_BUCKET_NAME }}
+  #   secrets: inherit
+
+  crm-e2e-test:
+    needs: deploy
+    name: Execute CRM Tests
+    if: ${{ needs.deploy.outputs.environment == 'staging' && needs.deploy.outputs.crm_tests == 'true' }}
+    uses: ultimateai/qe-workflows/.github/workflows/crm-e2e-tests.yml@QAT-602-crm-workflow
+    with:
+      e2e_repo: ${{ needs.deploy.outputs.e2e_repo }}
+      projects: ${{ needs.deploy.outputs.e2e_projects }}
+      e2e_bucket_name: ${{ needs.deploy.outputs.E2E_BUCKET_NAME }}
+    secrets: inherit
+
+  tests-result-notification:
+    needs: crm-e2e-test
+    name: Send Slack Notification for CRM Test Results
+    if: success() || failure()
+    runs-on: preemptible-runners
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      # - id: check_environment
+      #   if: ${{ (env.ENVIRONMENT != 'staging') }}
+      #   name: Execute CRM test on staging deployment
+      #   run: |-
+      #     echo "Tests are executed on Staging environment only" >> $GITHUB_STEP_SUMMARY
+      #     exit 1
+
+      - id: "user_name"
+        name: "get full user name from github API"
+        run: |-
+          echo "https://api.github.com/users/${{ github.actor }}"
+          user_full_name=$(curl https://api.github.com/users/${{ github.actor }} | jq ".name" | tr -d '"')
+          echo $user_full_name
+          if [[ $user_full_name == "null" ]]; then
+            echo "user_full_name is null"
+            user_full_name=${{ github.actor }}
+          fi
+          echo "user_full_name=$user_full_name" >> $GITHUB_OUTPUT
+
+      - uses: slackapi/slack-github-action@v1.24.0
+        name: Slack notification
+        id: slack_notif_e2e
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "Manual deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ env.USER_NAME }} - with CRM Test results included!"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
+          USER_NAME: ${{ steps.user_name.outputs.user_full_name }}
+
+      # - name: Slack Notification for e2e failure
+      #   if: ${{ contains(needs.crm-e2e-test.result, 'failure') }}
+      #   #id: slack_e2e_notif_failure
+      #   uses: slackapi/slack-github-action@v1.24.0
+      #   with:
+      #     channel-id: ${{ env.SLACK_CHANNEL_ID }}
+      #     payload: |-
+      #       {
+      #         "text": "CRM Test failed",
+      #         "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
+      #         "blocks": [
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": ":x: CRM Test failed! Please check your tests result at ${{ env.BUCKET_LINK }}"
+      #             }
+      #           }
+      #         ]
+      #       }
+      #   env:
+      #     SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
+      #     BUCKET_LINK: ${{ needs.crm-e2e-test.outputs.bucket_link }}
+
+      # - name: Slack Notification for e2e success
+      #   if: ${{ contains(needs.crm-e2e-test.result, 'success') }}
+      #   #id: slack_e2e_notif_success
+      #   uses: slackapi/slack-github-action@v1.24.0
+      #   with:
+      #     channel-id: ${{ env.SLACK_CHANNEL_ID }}
+      #     payload: |-
+      #       {
+      #         "text": "CRM Test executed successfully",
+      #         "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
+      #         "blocks": [
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": ":white_check_mark: CRM Test executed successfully! You can see more info at ${{ env.BUCKET_LINK }}"
+      #             }
+      #           }
+      #         ]
+      #       }
+      #   env:
+      #     SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
+      #     BUCKET_LINK: ${{ needs.crm-e2e-test.outputs.bucket_link }}
+
+      - name: Slack Notification for E2E Test Result
+        if: needs.crm-e2e-test.result == 'success' || needs.crm-e2e-test.result == 'failure'
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          channel-id: ${{ env.SLACK_CHANNEL_ID }}
+          payload: |-
+            {
+              "text": "${{ needs.crm-e2e-test.result == 'success' && 'CRM Test executed successfully' || 'CRM Test failed' }}",
+              "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ needs.crm-e2e-test.result == 'success' && ':white_check_mark: CRM Test executed successfully! You can see more info at' || ':x: CRM Test failed! Please check your test results at' }} ${{ env.BUCKET_LINK }}"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Test Status: ${{ needs.crm-e2e-test.result == 'success' && '✅ Success' || '❌ Failure' }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<${{ env.BUCKET_LINK }}|🔗 View Test Results>"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
+          BUCKET_LINK: ${{ needs.crm-e2e-test.outputs.bucket_link }}
