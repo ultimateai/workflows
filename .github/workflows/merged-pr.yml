@@ -174,48 +174,6 @@ jobs:
           BUMPED_VERSION: ${{ steps.bump_version.outputs.next_version }}
           REMOTE_REPO: https://${{ secrets.ULTIMATE_GITHUB_PAT }}@github.com/ultimateai/${{ github.event.repository.name }}.git
 
-  sonarqube-scan:
-    name: SonarQube Scan Main
-    if: github.event.pull_request.merged == true
-    runs-on: ${{ inputs.runner }}
-    permissions:
-      contents: "read"
-      id-token: "write"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: check sonar properties file exists in main branch
-        id: check-properties-file
-        uses: andstor/file-existence-action@v3
-        with:
-          files: "sonar-project.properties"
-
-      # If sonar properties does not exist, fail step
-      - name: Fail the step if sonar properties file does not exist
-        if: steps.check-properties-file.outputs.files_exists == 'false'
-        run: |
-          echo "Sonar properties file does not exist. Please create a sonar-project.properties file in the root of your project." >> $GITHUB_STEP_SUMMARY
-          exit 1
-
-      - name: SonarQube Scan Main
-        if: github.ref == 'refs/heads/main'
-        uses: SonarSource/sonarqube-scan-action@v4.1.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
-        with:
-          args: >
-            -Dsonar.sourceEncoding=UTF-8
-            -Dsonar.branch.name=main
-            -Dsonar.projectTags=ai-agents
-
   push-and-deploy:
     name: Push image with updated tag and deploy to pre environments
     runs-on: preemptible-runners
@@ -505,3 +463,46 @@ jobs:
           K8S_ENV_NAME: ${{ env.AUTOMATIC_DEPLOYMENT_TO }}
           IMAGE_NAME: ${{ steps.image_name.outputs.image_name }}
           APP_NAMES: ${{ steps.app_names.outputs.app_names }}
+
+  sonarqube-scan:
+    name: SonarQube Scan Main
+    needs: push-and-deploy
+    if: github.event.pull_request.merged == true
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: check sonar properties file exists in main branch
+        id: check-properties-file
+        uses: andstor/file-existence-action@v3
+        with:
+          files: "sonar-project.properties"
+
+      # If sonar properties does not exist, fail step
+      - name: Fail the step if sonar properties file does not exist
+        if: steps.check-properties-file.outputs.files_exists == 'false'
+        run: |
+          echo "Sonar properties file does not exist. Please create a sonar-project.properties file in the root of your project." >> $GITHUB_STEP_SUMMARY
+          exit 1
+
+      - name: SonarQube Scan Main
+        if: github.ref == 'refs/heads/main'
+        uses: SonarSource/sonarqube-scan-action@v4.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
+        with:
+          args: >
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.branch.name=main
+            -Dsonar.projectTags=ai-agents
