@@ -46,11 +46,11 @@ on:
         required: true
         type: string
         description: "Repository containing your e2e tests"
-      e2e_projects:
-        default: "crm-integration"
-        required: true
-        type: string
-        description: "Projects (matrix) in crm - crm-integration"
+      # e2e_projects:
+      #   default: "crm-integration"
+      #   required: true
+      #   type: string
+      #   description: "Projects (matrix) in crm - crm-integration"
       e2e_bucket_name:
         required: true
         type: string
@@ -77,7 +77,8 @@ env:
   APP_NAMES: ${{ inputs.app_names }}
   SLACK_CHANNEL_ID: ${{ inputs.slack_channel_id }}
   E2E_REPO: ${{ inputs.e2e_repo }}
-  E2E_PROJECTS: ${{ inputs.e2e_projects }}
+  # E2E_PROJECTS: ${{ inputs.e2e_projects }}
+  E2E_PROJECTS: "crm-integration"
   E2E_BUCKET_NAME: ${{ inputs.e2e_bucket_name }}
   GCR_ENABLED: ${{ vars.GCR_ENABLED || 'true' }}
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
@@ -381,7 +382,7 @@ jobs:
           fi
           echo "user_full_name=$user_full_name" >> $GITHUB_OUTPUT
 
-      - uses: slackapi/slack-github-action@v1.24.0
+      - uses: slackapi/slack-github-action@v1.27.0
         name: Slack notification
         id: slack_notif
         if: ${{ env.ENVIRONMENT == 'production' }}
@@ -408,7 +409,7 @@ jobs:
           OLD_VERSION: ${{ steps.get_old_version.outputs.old_version }}
           USER_NAME: ${{ steps.user_name.outputs.user_full_name }}
 
-      - uses: slackapi/slack-github-action@v1.24.0
+      - uses: slackapi/slack-github-action@v1.27.0
         name: Threaded slack notification for version comparison
         if: ${{ env.ENVIRONMENT == 'production' }}
         id: slack_threaded_version
@@ -483,7 +484,7 @@ jobs:
           fi
           echo "user_full_name=$user_full_name" >> $GITHUB_OUTPUT
 
-      - uses: slackapi/slack-github-action@v1.24.0
+      - uses: slackapi/slack-github-action@v1.27.0
         name: Slack notification
         id: slack_notif_e2e
         with:
@@ -508,7 +509,7 @@ jobs:
       # - name: Slack Notification for e2e failure
       #   if: ${{ contains(needs.crm-e2e-test.result, 'failure') }}
       #   #id: slack_e2e_notif_failure
-      #   uses: slackapi/slack-github-action@v1.24.0
+      #   uses: slackapi/slack-github-action@v1.27.0
       #   with:
       #     channel-id: ${{ env.SLACK_CHANNEL_ID }}
       #     payload: |-
@@ -532,7 +533,7 @@ jobs:
       # - name: Slack Notification for e2e success
       #   if: ${{ contains(needs.crm-e2e-test.result, 'success') }}
       #   #id: slack_e2e_notif_success
-      #   uses: slackapi/slack-github-action@v1.24.0
+      #   uses: slackapi/slack-github-action@v1.27.0
       #   with:
       #     channel-id: ${{ env.SLACK_CHANNEL_ID }}
       #     payload: |-
@@ -555,7 +556,7 @@ jobs:
 
       - name: Slack Notification for E2E Test Result
         if: needs.crm-e2e-test.result == 'success' || needs.crm-e2e-test.result == 'failure'
-        uses: slackapi/slack-github-action@v1.24.0
+        uses: slackapi/slack-github-action@v1.27.0
         with:
           channel-id: ${{ env.SLACK_CHANNEL_ID }}
           payload: |-
