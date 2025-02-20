@@ -41,7 +41,6 @@ on:
         required: false
         type: string
         #  default: "C07UT1DNB7W"
-        default: "C07RS870VPC"
         description: "Slack channel ID where you want your notifications"
       e2e_repo:
         required: true
