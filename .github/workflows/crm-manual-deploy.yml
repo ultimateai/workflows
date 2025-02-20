@@ -483,27 +483,27 @@ jobs:
           fi
           echo "user_full_name=$user_full_name" >> $GITHUB_OUTPUT
 
-      - uses: slackapi/slack-github-action@v1.27.0
-        name: Slack notification
-        id: slack_notif_e2e
-        with:
-          channel-id: ${{ env.SLACK_CHANNEL_ID }}
-          payload: |-
-            {
-              "text": "Manual deployment",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ env.USER_NAME }} - with CRM Test results included!"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
-          USER_NAME: ${{ steps.user_name.outputs.user_full_name }}
+      # - uses: slackapi/slack-github-action@v1.27.0
+      #   name: Slack notification
+      #   id: slack_notif_e2e
+      #   with:
+      #     channel-id: ${{ env.SLACK_CHANNEL_ID }}
+      #     payload: |-
+      #       {
+      #         "text": "Manual deployment",
+      #         "blocks": [
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ env.USER_NAME }} - with CRM Test results included!"
+      #             }
+      #           }
+      #         ]
+      #       }
+      #   env:
+      #     SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
+      #     USER_NAME: ${{ steps.user_name.outputs.user_full_name }}
 
       # - name: Slack Notification for e2e failure
       #   if: ${{ contains(needs.crm-e2e-test.result, 'failure') }}
@@ -561,7 +561,7 @@ jobs:
           payload: |-
             {
               "text": "${{ needs.crm-e2e-test.result == 'success' && 'CRM Test executed successfully' || 'CRM Test failed' }}",
-              "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
+              "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}",
               "blocks": [
                 {
                   "type": "section",
