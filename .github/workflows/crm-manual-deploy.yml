@@ -96,6 +96,7 @@ jobs:
       e2e_repo: ${{ env.E2E_REPO }}
       e2e_projects: ${{ env.E2E_PROJECTS }}
       e2e_bucket_name: ${{ env.E2E_BUCKET_NAME }}
+      thread_ts: ${{ steps.slack_notif.outputs.thread_ts }}
     permissions:
       contents: "read"
       id-token: "write"
@@ -456,7 +457,7 @@ jobs:
     secrets: inherit
 
   tests-result-notification:
-    needs: crm-e2e-test
+    needs: [crm-e2e-test, deploy]
     name: Send Slack Notification for CRM Test Results
     if: success() || failure()
     runs-on: preemptible-runners
@@ -561,7 +562,7 @@ jobs:
           payload: |-
             {
               "text": "${{ needs.crm-e2e-test.result == 'success' && 'CRM Test executed successfully' || 'CRM Test failed' }}",
-              "thread_ts": "${{ steps.slack_notif.outputs.thread_ts }}",
+              "thread_ts": "${{ needs.deploy.outputs.thread_ts }}",
               "blocks": [
                 {
                   "type": "section",
