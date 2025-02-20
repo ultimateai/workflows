@@ -1,4 +1,4 @@
-name: CRM Manual deploy to Production with CRM Tests
+name: CRM Manual deploy with execution of CRM Tests
 
 on:
   workflow_call:
@@ -40,7 +40,7 @@ on:
       slack_channel_id:
         required: false
         type: string
-        #default: "C07RS870VPC"
+        default: "C07UT1DNB7W"
         description: "Slack channel ID where you want your notifications"
       e2e_repo:
         required: true
@@ -433,22 +433,11 @@ jobs:
           TAGS: ${{ steps.tag_to_deploy.outputs.tag }}
           JSON_CHANGELOG_CONTENT: ${{ steps.changelog_json_content.outputs.changelog_json }}
 
-  # run-e2e-test:
-  #   needs: deploy
-  #   if: ${{ needs.deploy.outputs.environment == 'staging' && needs.deploy.outputs.crm_tests == 'true' }}
-  #   name: run end to end tests
-  #   uses: ultimateai/qe-workflows/.github/workflows/playwright-e2e-tests.yml@0.2.0
-  #   with:
-  #     e2e_repo: ${{ needs.deploy.outputs.e2e_repo }}
-  #     projects: ${{ needs.deploy.outputs.e2e_projects }}
-  #     e2e_bucket_name: ${{ needs.deploy.outputs.E2E_BUCKET_NAME }}
-  #   secrets: inherit
-
   crm-e2e-test:
     needs: deploy
     name: Execute CRM Tests
     if: ${{ needs.deploy.outputs.environment == 'production' && needs.deploy.outputs.crm_tests == 'true' }}
-    uses: ultimateai/qe-workflows/.github/workflows/crm-e2e-tests.yml@QAT-602-crm-workflow
+    uses: ultimateai/qe-workflows/.github/workflows/crm-e2e-tests.yml@0.4.0
     with:
       e2e_repo: ${{ needs.deploy.outputs.e2e_repo }}
       projects: ${{ needs.deploy.outputs.e2e_projects }}
@@ -464,12 +453,12 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      # - id: check_environment
-      #   if: ${{ (env.ENVIRONMENT != 'staging') }}
-      #   name: Execute CRM test on staging deployment
-      #   run: |-
-      #     echo "Tests are executed on Staging environment only" >> $GITHUB_STEP_SUMMARY
-      #     exit 1
+      - id: check_environment
+        if: ${{ (env.ENVIRONMENT != 'staging') }}
+        name: Execute CRM test on staging deployment
+        run: |-
+          echo "CRM Tests are executed on Staging environment only" >> $GITHUB_STEP_SUMMARY
+          exit 1
 
       - id: "user_name"
         name: "get full user name from github API"
@@ -482,76 +471,6 @@ jobs:
             user_full_name=${{ github.actor }}
           fi
           echo "user_full_name=$user_full_name" >> $GITHUB_OUTPUT
-
-      # - uses: slackapi/slack-github-action@v1.27.0
-      #   name: Slack notification
-      #   id: slack_notif_e2e
-      #   with:
-      #     channel-id: ${{ env.SLACK_CHANNEL_ID }}
-      #     payload: |-
-      #       {
-      #         "text": "Manual deployment",
-      #         "blocks": [
-      #           {
-      #             "type": "section",
-      #             "text": {
-      #               "type": "mrkdwn",
-      #               "text": "Deployment of `${{ github.event.repository.name }}` to `${{ env.ENVIRONMENT }}` by ${{ env.USER_NAME }} - with CRM Test results included!"
-      #             }
-      #           }
-      #         ]
-      #       }
-      #   env:
-      #     SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
-      #     USER_NAME: ${{ steps.user_name.outputs.user_full_name }}
-
-      # - name: Slack Notification for e2e failure
-      #   if: ${{ contains(needs.crm-e2e-test.result, 'failure') }}
-      #   #id: slack_e2e_notif_failure
-      #   uses: slackapi/slack-github-action@v1.27.0
-      #   with:
-      #     channel-id: ${{ env.SLACK_CHANNEL_ID }}
-      #     payload: |-
-      #       {
-      #         "text": "CRM Test failed",
-      #         "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
-      #         "blocks": [
-      #           {
-      #             "type": "section",
-      #             "text": {
-      #               "type": "mrkdwn",
-      #               "text": ":x: CRM Test failed! Please check your tests result at ${{ env.BUCKET_LINK }}"
-      #             }
-      #           }
-      #         ]
-      #       }
-      #   env:
-      #     SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
-      #     BUCKET_LINK: ${{ needs.crm-e2e-test.outputs.bucket_link }}
-
-      # - name: Slack Notification for e2e success
-      #   if: ${{ contains(needs.crm-e2e-test.result, 'success') }}
-      #   #id: slack_e2e_notif_success
-      #   uses: slackapi/slack-github-action@v1.27.0
-      #   with:
-      #     channel-id: ${{ env.SLACK_CHANNEL_ID }}
-      #     payload: |-
-      #       {
-      #         "text": "CRM Test executed successfully",
-      #         "thread_ts": "${{ steps.slack_notif_e2e.outputs.thread_ts }}",
-      #         "blocks": [
-      #           {
-      #             "type": "section",
-      #             "text": {
-      #               "type": "mrkdwn",
-      #               "text": ":white_check_mark: CRM Test executed successfully! You can see more info at ${{ env.BUCKET_LINK }}"
-      #             }
-      #           }
-      #         ]
-      #       }
-      #   env:
-      #     SLACK_BOT_TOKEN: ${{ secrets.SLACK_GITHUB_ZENDESK_APP_TOKEN }}
-      #     BUCKET_LINK: ${{ needs.crm-e2e-test.outputs.bucket_link }}
 
       - name: Slack Notification for E2E Test Result
         if: needs.crm-e2e-test.result == 'success' || needs.crm-e2e-test.result == 'failure'
