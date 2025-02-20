@@ -3,67 +3,66 @@ name: Manual deploy
 on:
   workflow_call:
     inputs:
-        image_repo:
-          required: true
-          type: string
-          description: "Your container registry repository - like europe-docker.pkg.dev/$project_id/$repo_id"
-        app_squad:
-          required: true
-          type: string
-          description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
-        environment:
-          required: true
-          type: string
-          description: "In which environment do you want to deploy"
-        github_email:
-          required: true
-          type: string
-          description: "Automatic CI/CD commits will be done by this email"
-        github_user:
-          required: true
-          type: string
-          description: "Automatic CI/CD commits will be done by this user"
-        k8s_manifests_repo:
-          required: true
-          type: string
-          description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
-        run_e2e_tests:
-          required: false
-          type: string
-          description: "Wether to execute or not e2e tests"
-          default: "false"
-        app_names:
-          required: false
-          type: string
-          description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
-        slack_channel_id:
-          required: false
-          type: string
-          default: "C07UT1DNB7W"
-          description: "Slack channel ID where you want your notifications"
-        e2e_repo:
-          required: true
-          type: string
-          description: "Repository containing your e2e tests"
-        e2e_projects:
-          required: true
-          type: string
-          description: "Projects for matrix in e2e sharding - chromium, firefox..."
-        e2e_bucket_name:
-          required: true
-          type: string
-          description: "Bucket in which to store e2e results"
-        region:
-          required: false
-          type: string
-          description: "Additional region (apart from europe) to deploy - default is us-west1"
-          default: "us-west1"
-        runner:
-          required: false
-          default: "preemptible-runners"
-          description: "Runner to use for the workflow"
-          type: string
-
+      image_repo:
+        required: true
+        type: string
+        description: "Your container registry repository - like europe-docker.pkg.dev/$project_id/$repo_id"
+      app_squad:
+        required: true
+        type: string
+        description: "Your app Squad - where your app is located inside argoCD (backend, ai, qa...)"
+      environment:
+        required: true
+        type: string
+        description: "In which environment do you want to deploy"
+      github_email:
+        required: true
+        type: string
+        description: "Automatic CI/CD commits will be done by this email"
+      github_user:
+        required: true
+        type: string
+        description: "Automatic CI/CD commits will be done by this user"
+      k8s_manifests_repo:
+        required: true
+        type: string
+        description: "Owner and repo name containing your k8s manifests - like ultimateai/k8s-manifests"
+      run_e2e_tests:
+        required: false
+        type: string
+        description: "Wether to execute or not e2e tests"
+        default: "false"
+      app_names:
+        required: false
+        type: string
+        description: "In case you want to deploy to multiple places or your app_name does not coincide with your repo name. format should be like app1,app2,app3"
+      slack_channel_id:
+        required: false
+        type: string
+        default: "C078L8JD074"
+        description: "Slack channel ID where you want your notifications"
+      e2e_repo:
+        required: true
+        type: string
+        description: "Repository containing your e2e tests"
+      e2e_projects:
+        required: true
+        type: string
+        description: "Projects for matrix in e2e sharding - chromium, firefox..."
+      e2e_bucket_name:
+        required: true
+        type: string
+        description: "Bucket in which to store e2e results"
+      region:
+        required: false
+        type: string
+        description: "Additional region (apart from europe) to deploy - default is us-west1"
+        default: "us-west1"
+      runner:
+        required: false
+        default: "preemptible-runners"
+        description: "Runner to use for the workflow"
+        type: string
 
 env:
   IMAGE_REPO: ${{ inputs.image_repo }}
@@ -85,7 +84,6 @@ env:
   REGION: ${{ inputs.region }}
   AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
 
-
 jobs:
   deploy:
     name: Update k8s manifest repo for ${{ inputs.ENVIRONMENT }} deployment
@@ -103,7 +101,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Check if region is valid
         run: |-
           if [[ " ${AVAILABLE_REGIONS_FOR_DEPLOYMENT[*]} " =~ ${{ env.REGION }} ]]; then
@@ -162,35 +160,35 @@ jobs:
 
       - name: Get env file for updating k8s-manifest repo
         run: |-
-            if [[ $APP_NAMES == *","* ]]; then
-              IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
-              for app_name in "${array_app_names[@]}"
-              do
-                if [[ "${ENVIRONMENT}" = "production" ]]; then
-                  cat "deployment_envs/$app_name/prod.env" > $HOME/eu-$app_name-envfile.env
-                  cat "deployment_envs/$app_name/region/$REGION/prod.env" > $HOME/$REGION-$app_name-envfile.env
-                elif [[ "${ENVIRONMENT}" = "staging" ]]; then
-                  cat "deployment_envs/$app_name/stage.env" > $HOME/eu-$app_name-envfile.env
-                else
-                  cat "deployment_envs/$app_name/dev.env" > $HOME/eu-$app_name-envfile.env
-                fi
-                if [[ -f "deployment_envs/$app_name/common.env" || -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
-                  echo "Please delete deployment_envs/$app_name/common.env or deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
-                fi
-              done
-            else
+          if [[ $APP_NAMES == *","* ]]; then
+            IFS=',' read -r -a array_app_names <<< "$APP_NAMES"
+            for app_name in "${array_app_names[@]}"
+            do
               if [[ "${ENVIRONMENT}" = "production" ]]; then
-                cat "deployment_envs/prod.env" > $HOME/eu-envfile.env
-                cat "deployment_envs/region/$REGION/prod.env" > $HOME/$REGION-envfile.env
+                cat "deployment_envs/$app_name/prod.env" > $HOME/eu-$app_name-envfile.env
+                cat "deployment_envs/$app_name/region/$REGION/prod.env" > $HOME/$REGION-$app_name-envfile.env
               elif [[ "${ENVIRONMENT}" = "staging" ]]; then
-                cat "deployment_envs/stage.env" > $HOME/eu-envfile.env
+                cat "deployment_envs/$app_name/stage.env" > $HOME/eu-$app_name-envfile.env
               else
-                cat "deployment_envs/dev.env" > $HOME/eu-envfile.env
+                cat "deployment_envs/$app_name/dev.env" > $HOME/eu-$app_name-envfile.env
               fi
-              if [[ -f "deployment_envs/common.env" || -f "deployment_envs/region/$REGION/common.env" ]]; then
-                echo "Please delete deployment_envs/common.env or deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
+              if [[ -f "deployment_envs/$app_name/common.env" || -f "deployment_envs/$app_name/region/$REGION/common.env" ]]; then
+                echo "Please delete deployment_envs/$app_name/common.env or deployment_envs/$app_name/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
               fi
+            done
+          else
+            if [[ "${ENVIRONMENT}" = "production" ]]; then
+              cat "deployment_envs/prod.env" > $HOME/eu-envfile.env
+              cat "deployment_envs/region/$REGION/prod.env" > $HOME/$REGION-envfile.env
+            elif [[ "${ENVIRONMENT}" = "staging" ]]; then
+              cat "deployment_envs/stage.env" > $HOME/eu-envfile.env
+            else
+              cat "deployment_envs/dev.env" > $HOME/eu-envfile.env
             fi
+            if [[ -f "deployment_envs/common.env" || -f "deployment_envs/region/$REGION/common.env" ]]; then
+              echo "Please delete deployment_envs/common.env or deployment_envs/region/$REGION/common.env" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
 
       - id: fetch_latest_release
         uses: ultimateai/fetch-latest-release@2.1.1
@@ -265,7 +263,7 @@ jobs:
         run: |
           JSON_CONTENT=$(echo "${{ env.FILTERED_CHANGELOG_CONTENT }}" | sed 's/$/\\n/' | tr -d '\n')
           echo "changelog_json=$JSON_CONTENT" >> $GITHUB_OUTPUT
-      
+
       - name: Update the Image tags and env files for PREPROD in europe region
         if: ${{ env.ENVIRONMENT != 'production' }}
         run: |-
