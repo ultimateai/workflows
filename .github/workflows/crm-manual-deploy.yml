@@ -47,8 +47,7 @@ on:
         type: string
         description: "Repository containing your e2e tests"
       e2e_projects:
-        default: "crm-integration"
-        required: false
+        required: true
         type: string
         description: "Projects: crm-integration"
       e2e_bucket_name:
