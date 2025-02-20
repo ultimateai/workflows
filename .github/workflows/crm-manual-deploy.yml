@@ -568,7 +568,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ needs.crm-e2e-test.result == 'success' && ':white_check_mark: CRM Test executed successfully! You can see more info at' || ':x: CRM Test failed! Please check your test results at' }} ${{ env.BUCKET_LINK }}"
+                    "text": "Test Info: \n ${{ needs.crm-e2e-test.result == 'success' && ':white_check_mark: CRM Test executed successfully! You can see more info at' || ':x: CRM Test failed! Please check your test results at' }} ${{ env.BUCKET_LINK }}"
                   }
                 },
                 {
@@ -576,7 +576,7 @@ jobs:
                   "elements": [
                     {
                       "type": "mrkdwn",
-                      "text": "Test Status: ${{ needs.crm-e2e-test.result == 'success' && '✅ Success' || '❌ Failure' }}"
+                      "text": "Test Status: ${{ needs.crm-e2e-test.result == 'success' && '✅ Success' || '❌ Failure' }} \n"
                     },
                     {
                       "type": "mrkdwn",
