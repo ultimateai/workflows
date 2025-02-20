@@ -47,11 +47,11 @@ on:
         required: true
         type: string
         description: "Repository containing your e2e tests"
-      # e2e_projects:
-      #   default: "crm-integration"
-      #   required: true
-      #   type: string
-      #   description: "Projects (matrix) in crm - crm-integration"
+      e2e_projects:
+        #default: "crm-integration"
+        required: true
+        type: string
+        description: "Projects (matrix) in crm - crm-integration"
       e2e_bucket_name:
         required: true
         type: string
@@ -78,8 +78,7 @@ env:
   APP_NAMES: ${{ inputs.app_names }}
   SLACK_CHANNEL_ID: ${{ inputs.slack_channel_id }}
   E2E_REPO: ${{ inputs.e2e_repo }}
-  # E2E_PROJECTS: ${{ inputs.e2e_projects }}
-  E2E_PROJECTS: "crm-integration"
+  E2E_PROJECTS: ${{ inputs.e2e_projects }}
   E2E_BUCKET_NAME: ${{ inputs.e2e_bucket_name }}
   GCR_ENABLED: ${{ vars.GCR_ENABLED || 'true' }}
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
