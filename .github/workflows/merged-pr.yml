@@ -390,7 +390,7 @@ jobs:
 
       - name: SonarQube Scan Main
         if: github.ref == 'refs/heads/main'
-        uses: SonarSource/sonarqube-scan-action@v4.1.0
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
