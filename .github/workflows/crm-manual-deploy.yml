@@ -437,7 +437,7 @@ jobs:
     needs: deploy
     name: Execute CRM Tests
     if: ${{ needs.deploy.outputs.environment == 'production' && needs.deploy.outputs.crm_tests == 'true' }}
-    uses: ultimateai/qe-workflows/.github/workflows/crm-e2e-tests.yml@0.4.1
+    uses: ultimateai/qe-workflows/.github/workflows/crm-e2e-tests.yml@0.4.3
     with:
       e2e_repo: ${{ needs.deploy.outputs.e2e_repo }}
       projects: ${{ needs.deploy.outputs.e2e_projects }}
@@ -453,13 +453,6 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - id: check_environment
-        if: ${{ (env.ENVIRONMENT != 'staging') }}
-        name: Execute CRM test on staging deployment
-        run: |-
-          echo "CRM Tests are executed on Staging environment only" >> $GITHUB_STEP_SUMMARY
-          exit 1
-
       - id: "user_name"
         name: "get full user name from github API"
         run: |-
