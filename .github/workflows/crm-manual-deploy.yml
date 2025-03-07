@@ -453,13 +453,6 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - id: check_environment
-        if: ${{ (env.ENVIRONMENT != 'staging') }}
-        name: Execute CRM test on staging deployment
-        run: |-
-          echo "CRM Tests are executed on Staging environment only" >> $GITHUB_STEP_SUMMARY
-          exit 1
-
       - id: "user_name"
         name: "get full user name from github API"
         run: |-
