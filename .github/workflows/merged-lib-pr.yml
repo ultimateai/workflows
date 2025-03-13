@@ -3,61 +3,61 @@ name: Merged PR to main library branch
 on:
   workflow_call:
     inputs:
-        github_email:
-          required: true
-          type: string
-          description: "Automatic CI/CD commits will be done by this email"
-        github_user:
-          required: true
-          type: string
-          description: "Automatic CI/CD commits will be done by this user"
-        update_file:
-          required: false
-          type: string
-          description: "The file with the version you want to update"
-        changelog:
-          required: false
-          type: boolean
-          description: "Update changelog"
-        initial_release:
-          required: false
-          type: string
-          description: "In case no release is present in the repo, which one should be the base release from which to bump - defaults to 0.0.0"
-          default: "0.0.1"
-        npm_install_command:
-          required: false
-          type: string
-          description: "Command for npm i, defaults to - npm i"
-          default: "npm i"
-        node_version:
-          required: false
-          type: string
-          default: "16.x"
-          description: "Node version used in the pipeline, defaults to 16.x"
-        test_command:
-          required: false
-          type: string
-          description: "Command for running your tests, defaults to - npm run test"
-          default: "npm run test"
-        build_command:
-          required: false
-          type: string
-          description: "Command for running npm run build, defaults to - npm run build"
-          default: "npm run build"
-        lint_command:
-          required: false
-          type: string
-          description: "Command for running npm run lint, defaults to - npm run lint"
-          default: "npm run lint"
-        publish_command:
-          required: false
-          type: string
-          description: "Command for publishing the artifact, defaults to - npm publish"
-          default: "npm publish"
-        npm_version:
-          required: false
-          type: string
-          description: "Npm version used in the pipeline, defaults to LTS version"
+      github_email:
+        required: true
+        type: string
+        description: "Automatic CI/CD commits will be done by this email"
+      github_user:
+        required: true
+        type: string
+        description: "Automatic CI/CD commits will be done by this user"
+      update_file:
+        required: false
+        type: string
+        description: "The file with the version you want to update"
+      changelog:
+        required: false
+        type: boolean
+        description: "Update changelog"
+      initial_release:
+        required: false
+        type: string
+        description: "In case no release is present in the repo, which one should be the base release from which to bump - defaults to 0.0.0"
+        default: "0.0.1"
+      npm_install_command:
+        required: false
+        type: string
+        description: "Command for npm i, defaults to - npm i"
+        default: "npm i"
+      node_version:
+        required: false
+        type: string
+        default: "16.x"
+        description: "Node version used in the pipeline, defaults to 16.x"
+      test_command:
+        required: false
+        type: string
+        description: "Command for running your tests, defaults to - npm run test"
+        default: "npm run test"
+      build_command:
+        required: false
+        type: string
+        description: "Command for running npm run build, defaults to - npm run build"
+        default: "npm run build"
+      lint_command:
+        required: false
+        type: string
+        description: "Command for running npm run lint, defaults to - npm run lint"
+        default: "npm run lint"
+      publish_command:
+        required: false
+        type: string
+        description: "Command for publishing the artifact, defaults to - npm publish"
+        default: "npm publish"
+      npm_version:
+        required: false
+        type: string
+        description: "Npm version used in the pipeline, defaults to LTS version"
 
 env:
   GITHUB_EMAIL: ${{ inputs.github_email }}
@@ -192,3 +192,29 @@ jobs:
       - name: Upload NPM Package to Artifact Registry
         if: ${{ env.PUBLISH_COMMAND }}
         run: $PUBLISH_COMMAND
+
+      # Sonarqube steps: check for properties file, if it exist run scan
+      - name: check sonar properties file exists in main branch
+        id: check-properties-file
+        uses: andstor/file-existence-action@v3
+        with:
+          files: "sonar-project.properties"
+
+      # If sonar properties does not exist, fail step
+      - name: Fail the step if sonar properties file does not exist
+        if: steps.check-properties-file.outputs.files_exists == 'false'
+        run: |
+          echo "Sonar properties file does not exist. Please create a sonar-project.properties file in the root of your project." >> $GITHUB_STEP_SUMMARY
+          exit 1
+
+      - name: SonarQube Scan Main
+        if: github.ref == 'refs/heads/main'
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONARQUBE_HOST }}
+        with:
+          args: >
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.branch.name=main
+            -Dsonar.projectTags=ai-agents
