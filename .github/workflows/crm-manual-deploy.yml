@@ -437,7 +437,7 @@ jobs:
     needs: deploy
     name: Execute CRM Tests
     if: ${{ needs.deploy.outputs.environment == 'production' && needs.deploy.outputs.crm_tests == 'true' }}
-    uses: ultimateai/qe-workflows/.github/workflows/crm-e2e-tests.yml@0.4.4
+    uses: ultimateai/qe-workflows/.github/workflows/crm-e2e-tests.yml@0.4.5
     with:
       e2e_repo: ${{ needs.deploy.outputs.e2e_repo }}
       projects: ${{ needs.deploy.outputs.e2e_projects }}
