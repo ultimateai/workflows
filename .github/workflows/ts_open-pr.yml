@@ -86,9 +86,12 @@ jobs:
           workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
           service_account: ${{ secrets.GSA_GCR_EMAIL }}
 
-      - name: Login to Artifact Registry
-        run: |
-          docker login -u oauth2accesstoken --password-stdin https://europe-west1-docker.pkg.dev <<< "${{ steps.auth.outputs.access_token }}"
+      - name: "Authenticating docker to gar"
+        uses: docker/login-action@v3
+        with:
+          registry: "https://europe-west1-docker.pkg.dev"
+          username: "oauth2accesstoken"
+          password: "${{ steps.auth.outputs.access_token }}"
 
       - name: Install npm Packages
         run: |
