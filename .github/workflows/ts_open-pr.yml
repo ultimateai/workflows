@@ -86,6 +86,10 @@ jobs:
           workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
           service_account: ${{ secrets.GSA_GCR_EMAIL }}
 
+      - name: Login to Artifact Registry (secure)
+        run: |
+          docker login -u oauth2accesstoken --password-stdin https://europe-west1-docker.pkg.dev <<< "${{ steps.auth.outputs.access_token }}"
+
       - name: Install npm Packages
         run: |
           if grep -q artifactregistry-login "package.json"; then
