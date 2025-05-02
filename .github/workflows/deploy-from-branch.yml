@@ -95,6 +95,7 @@ env:
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
+  ZENDESK_BASE_IMAGES_REPO: ${{ vars.ZENDESK_BASE_IMAGES_REPO || 'europe-west1-docker.pkg.dev/common-main-cfc4/zendesk-base-images' }}
   REGION: ${{ inputs.region }}
   AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
   CEREBRO_TEAM: ${{ inputs.cerebro_team }}
@@ -164,6 +165,8 @@ jobs:
             IMAGE_NAME=$GCR_IMAGE_NAME
           fi
 
+          ZENDESK_BASE_IMAGES_DOMAIN=$(echo $ZENDESK_BASE_IMAGES_REPO | cut -d '/' -f 1)
+
           echo "gcr_domain=$GCR_DOMAIN" >> $GITHUB_OUTPUT
           echo "gar_domain=$GAR_DOMAIN" >> $GITHUB_OUTPUT
           echo "gcr_image_repo=$GCR_IMAGE_REPO" >> $GITHUB_OUTPUT
@@ -171,6 +174,7 @@ jobs:
           echo "gcr_image_name=$GCR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "zendesk_base_images_domain=$ZENDESK_BASE_IMAGES_DOMAIN" >> $GITHUB_OUTPUT
 
       - id: "app_names"
         name: "Get app_names if necessary"
@@ -202,7 +206,7 @@ jobs:
       - name: Export Home
         run: echo "HOME=/root" >> $GITHUB_ENV
 
-      ##  Needs to be added so as to pull common Libs from bitbucket ##
+      ### Needs to be added so as to pull common Libs from bitbucket ##
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
@@ -218,7 +222,7 @@ jobs:
           key: npm-${{ hashFiles('package-lock.json') }}
           restore-keys: npm-
 
-       ### Authentings with Google Cloud to Push Image to GCR ###
+      ### Authenticate with Google Cloud to Push Image to GCR ###
       - id: "auth"
         name: "Authenticate to Google Cloud"
         uses: "google-github-actions/auth@v2"
@@ -246,7 +250,14 @@ jobs:
         if: ${{ env.BUILD_COMMAND }}
         run: $BUILD_COMMAND
 
-      - name: "Authenticating docker to push to gcr"
+      - name: "Authenticating docker for zendesk-base-images dependencies"
+        uses: docker/login-action@v3
+        with:
+          registry: "${{ steps.image_name.outputs.ZENDESK_BASE_IMAGES_DOMAIN }}"
+          username: "oauth2accesstoken"
+          password: "${{ steps.auth.outputs.access_token }}"
+
+      - name: "Authenticating docker to push to gcr domain"
         if: ${{ env.GCR_ENABLED == 'true' }}
         uses: docker/login-action@v3
         with:
@@ -254,7 +265,7 @@ jobs:
           username: "oauth2accesstoken"
           password: "${{ steps.auth.outputs.access_token }}"
 
-      - name: "Authenticating docker to push to gar"
+      - name: "Authenticating docker to push to gar domain"
         if: ${{ env.GAR_ENABLED == 'true' }}
         uses: docker/login-action@v3
         with:
@@ -292,7 +303,7 @@ jobs:
           TAGS: ${{ steps.get_image_tag.outputs.image_tag }}
           IMAGE_NAME: ${{ steps.image_name.outputs.gar_image_name }}
 
-      ##Deploy to dev
+      ### Deploy to dev
       - name: "Checkout k8s manifests"
         uses: actions/checkout@v4
         with:

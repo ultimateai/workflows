@@ -111,6 +111,7 @@ env:
   GAR_ENABLED: ${{ vars.GAR_ENABLED || 'true' }}
   GCR_DEFAULT_REPO: ${{ vars.GCR_DEFAULT_REPO }}
   GAR_DEFAULT_REPO: ${{ vars.GAR_DEFAULT_REPO }}
+  ZENDESK_BASE_IMAGES_REPO: ${{ vars.ZENDESK_BASE_IMAGES_REPO || 'europe-west1-docker.pkg.dev/common-main-cfc4/zendesk-base-images' }}
   AVAILABLE_REGIONS_FOR_DEPLOYMENT: ${{ vars.AVAILABLE_REGIONS_FOR_DEPLOYMENT }}
   REGION: ${{ inputs.region }}
   CEREBRO_TEAM: ${{ inputs.cerebro_team }}
@@ -239,6 +240,8 @@ jobs:
             IMAGE_NAME=$GCR_IMAGE_NAME
           fi
 
+          ZENDESK_BASE_IMAGES_DOMAIN=$(echo $ZENDESK_BASE_IMAGES_REPO | cut -d '/' -f 1)
+
           echo "gcr_domain=$GCR_DOMAIN" >> $GITHUB_OUTPUT
           echo "gar_domain=$GAR_DOMAIN" >> $GITHUB_OUTPUT
           echo "gcr_image_repo=$GCR_IMAGE_REPO" >> $GITHUB_OUTPUT
@@ -246,6 +249,7 @@ jobs:
           echo "gcr_image_name=$GCR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "gar_image_name=$GAR_IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "zendesk_base_images_domain=$ZENDESK_BASE_IMAGES_DOMAIN" >> $GITHUB_OUTPUT
 
       - id: "app_names"
         name: "Get app_names if necessary"
@@ -308,6 +312,13 @@ jobs:
           token_format: "access_token"
           workload_identity_provider: "${{ secrets.WIF_PROVIDER_NAME }}"
           service_account: ${{ secrets.GSA_GCR_EMAIL }}
+
+      - name: "Authenticating docker for zendesk-base-images dependencies"
+        uses: docker/login-action@v3
+        with:
+          registry: "${{ steps.image_name.outputs.ZENDESK_BASE_IMAGES_DOMAIN }}"
+          username: "oauth2accesstoken"
+          password: "${{ steps.auth.outputs.access_token }}"
 
       - name: "Authenticating docker to push to gcr"
         if: ${{ env.GCR_ENABLED == 'true' }}
